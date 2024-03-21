@@ -4,6 +4,10 @@
 
   (paper "A3")
 
+  (title_block
+    (title "Z80 SBC Video")
+  )
+
   (lib_symbols
     (symbol "74xx:74HC165" (in_bom yes) (on_board yes)
       (property "Reference" "U" (at -7.62 19.05 0)

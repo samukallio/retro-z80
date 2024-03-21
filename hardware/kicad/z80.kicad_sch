@@ -4,6 +4,10 @@
 
   (paper "A3")
 
+  (title_block
+    (title "Z80 SBC")
+  )
+
   (lib_symbols
     (symbol "74xx:74HC138" (in_bom yes) (on_board yes)
       (property "Reference" "U" (at -7.62 13.97 0)
@@ -5342,7 +5346,7 @@
     (stroke (width 0.1524) (type solid))
     (fill (color 0 0 0 0.0000))
     (uuid 7ae0ff7b-f723-4ab9-95e0-30d6764cd04b)
-    (property "Sheetname" "Video" (at 335.28 59.69 0)
+    (property "Sheetname" "video" (at 335.28 59.69 0)
       (effects (font (size 1.27 1.27)) (justify left bottom))
     )
     (property "Sheetfile" "video.kicad_sch" (at 342.9 58.42 0)

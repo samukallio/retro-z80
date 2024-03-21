@@ -1,0 +1,64 @@
+name timing;
+device p22v10;
+partno xyzxyz;
+
+/* Input */
+pin 1  = CLK;
+pin 2  = H4;
+pin 3  = H5;
+pin 4  = H6;
+pin 5  = H7;
+pin 6  = H8;
+pin 7  = V0;
+pin 8  = V1;
+pin 9  = V2;
+pin 11 = !RESET;
+
+/* Output */
+pin 23 = !H4567;
+pin 22 = V3;
+pin 21 = V4;
+pin 20 = V5;
+pin 19 = V6;
+pin 18 = V7;
+pin 17 = !V8;
+pin 16 = !SYNC;
+pin 15 = !VIDEO;
+pin 14 = !BURST;
+
+field H = [H8..H4];
+field V = [V8..V0];
+
+/* Last 2us of half a scanline. */
+H4567  = H:[0F0..0FF] # H:[1F0..1FF];
+
+/* Top 6 bits of line counter. */
+CLEAR  = RESET # V:137 & H4567 & H8;
+V3.D   = !CLEAR & (V3 $ [H4567, H8, V0..V2]:&);
+V4.D   = !CLEAR & (V4 $ [H4567, H8, V0..V3]:&);
+V5.D   = !CLEAR & (V5 $ [H4567, H8, V0..V4]:&);
+V6.D   = !CLEAR & (V6 $ [H4567, H8, V0..V5]:&);
+V7.D   = !CLEAR & (V7 $ [H4567, H8, V0..V6]:&);
+V8.D   = !CLEAR & (V8 $ [H4567, H8, V0..V7]:&);
+
+/* Timing. */
+VSYNCS = H:[000..00F] # H:[100..10F];
+VSYNCL = !H4567;
+HSYNC  = H:[000..01F];
+
+SYNC.D = V:[000..10F] & HSYNC 
+	# V:[110..112] & VSYNCS
+	# V:[113..114] & VSYNCL
+	# V:115        & (!H8 & VSYNCL # H8 & VSYNCS)
+	# V:[116..117] & VSYNCS
+	# V:[118..137] & HSYNC 
+	;
+
+VIDEO.D
+	= V:[000..0FF] & H:[0A0..19F]
+	;
+
+BURST.D
+	= V:[000..10F] & H:[040..04F]
+	# V:[118..137] & H:[040..04F]
+	;

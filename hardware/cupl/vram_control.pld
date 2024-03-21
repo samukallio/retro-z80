@@ -1,0 +1,51 @@
+name vram_control;
+device p22v10;
+
+/* Input */
+pin 1  = CLK;
+pin 2  = !VRAM;
+pin 3  = !WR;
+pin 4  = !RD;
+
+pin 13 = H0;
+pin 6  = H1;
+pin 5  = H2;
+
+pin 7  = A0;
+pin 8  = A1;
+pin 9  = A2;
+pin 10 = A3;
+pin 11 = A4;
+
+pin 15 = !VIDEO;
+
+field H = [H2..H0];
+
+/* Output */
+pin 23 = VA0;
+pin 22 = VA1;
+pin 21 = VA2;
+pin 20 = VA3;
+pin 19 = VA4;
+pin 18 = !VRAMWE;
+pin 17 = !VRAMOE;
+pin 16 = !DATAOE;
+pin 14 = VA5_T;
+
+/** VRAM control signals **/
+VRAMOE.D = VRAM & RD # !VRAM & VIDEO & H:0;
+VRAMWE.D = VRAM & WR;
+DATAOE.D = VRAM & (WR # RD);
+
+/** VRAM address counter **/
+VA0_T = !VRAM & VIDEO & H:1;
+VA0.D = VRAM & A0 # !VRAM & (VA0 $ VA0_T);
+VA1_T = VA0_T & VA0;
+VA1.D = VRAM & A1 # !VRAM & (VA1 $ VA1_T);
+VA2_T = VA1_T & VA1;
+VA2.D = VRAM & A2 # !VRAM & (VA2 $ VA2_T);
+VA3_T = VA2_T & VA2;
+VA3.D = VRAM & A3 # !VRAM & (VA3 $ VA3_T);
+VA4_T = VA3_T & VA3;
+VA4.D = VRAM & A4 # !VRAM & (VA4 $ VA4_T);
+VA5_T = VA4_T & VA4;

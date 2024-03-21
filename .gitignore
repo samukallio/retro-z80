@@ -1,0 +1,27 @@
+# KiCad
+hardware/kicad/*.000
+hardware/kicad/*.bak
+hardware/kicad/*.bck
+hardware/kicad/*.lck
+hardware/kicad/*.kicad_pcb-bak
+hardware/kicad/*.kicad_sch-bak
+hardware/kicad/*-backups
+hardware/kicad/*.kicad_prl
+hardware/kicad/*.sch-bak
+hardware/kicad/*~
+hardware/kicad/_autosave-*
+hardware/kicad/*.tmp
+hardware/kicad/*-save.pro
+hardware/kicad/*-save.kicad_pcb
+hardware/kicad/fp-info-cache
+hardware/kicad/*.net
+hardware/kicad/*.dsn
+hardware/kicad/*.ses
+hardware/kicad/*.xml
+hardware/kicad/*.csv
+
+# WinCUPL
+hardware/cupl/*.doc
+hardware/cupl/*.abs
+hardware/cupl/*.pdf
+hardware/cupl/*.sim

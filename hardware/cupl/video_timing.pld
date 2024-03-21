@@ -1,6 +1,5 @@
-name timing;
+name video_timing;
 device p22v10;
-partno xyzxyz;
 
 /* Input */
 pin 1  = CLK;

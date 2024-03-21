@@ -1,9 +1,9 @@
 
 CUPL(WM)        5.0a  Serial# 60008009
 Device          p22v10  Library DLIB-h-40-17
-Created         Tue Mar 12 12:19:16 2024
-Name            timing
-Partno          xyzxyz
+Created         Thu Mar 21 03:12:04 2024
+Name            video_timing
+Partno          xxxxxx
 Revision        xxxxxx
 Date            xxxxxx
 Designer        xxxxxx
@@ -149,4 +149,4 @@ Location        xxxxxx
 *L05568 11111111111111111111000000000000
 *L05792 00000000000000000110101010100000
 *CBD16
-*6BEC
+*6E55

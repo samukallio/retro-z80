@@ -30,5 +30,3 @@ hardware/cupl/*.sim
 emulator/build
 emulator/sdl2/*
 !emulator/sdl2/.empty
-emulator/z80ex/*
-!emulator/z80ex/.empty

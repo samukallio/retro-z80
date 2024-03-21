@@ -25,3 +25,10 @@ hardware/cupl/*.doc
 hardware/cupl/*.abs
 hardware/cupl/*.pdf
 hardware/cupl/*.sim
+
+# Emulator
+emulator/.vs
+emulator/x64
+emulator/*.sln
+emulator/*.vcxproj
+emulator/*.vcxproj.*

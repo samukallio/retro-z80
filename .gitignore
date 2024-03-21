@@ -27,8 +27,8 @@ hardware/cupl/*.pdf
 hardware/cupl/*.sim
 
 # Emulator
-emulator/.vs
-emulator/x64
-emulator/*.sln
-emulator/*.vcxproj
-emulator/*.vcxproj.*
+emulator/build
+emulator/sdl2
+!emulator/sdl2/.empty
+emulator/z80ex
+!emulator/z80ex/.empty

@@ -280,3 +280,7 @@ _loop:
     ld (random_state+2), hl
     exx
     ret
+
+if $ > PROGRAM_BASE + PROGRAM_SIZE
+    .error "Maximum program size exceeded!"
+endif

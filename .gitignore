@@ -26,6 +26,10 @@ hardware/cupl/*.abs
 hardware/cupl/*.pdf
 hardware/cupl/*.sim
 
+# Software
+software/*.bin
+software/*.sym
+
 # Emulator
 emulator/build
 emulator/sdl2/*

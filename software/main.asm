@@ -8,17 +8,32 @@ VRAM_BASE:              equ $4000
 ; Logical memory map.
 COMMON_RAM_BASE:        equ $2000   ; RAM for common functionality.
 COMMON_RAM_SIZE:        equ 1024
-
 GAME_RAM_BASE:          equ $2400   ; RAM for the active game.
 GAME_RAM_SIZE:          equ 1024
-
-PROGRAM_RAM_BASE:       equ $2800   ; RAM to store instructions when using the
-PROGRAM_RAM_SIZE:       equ 4096    ; online RAM programmer during development.
-
-STACK_BASE:             equ $3F00   ; Stack space.
+STACK_BASE:             equ $3F00
 STACK_SIZE:             equ 256
 
-FONT_BASE:              equ $3800   ; Character table (128*8 = 1024 bytes).
+; If the RAM loader mode is enabled, place the program and character data into
+; the RAM part of the address space, so that they can be loaded into memory
+; by copying bytes $2000-$3FFF of the assembled binary into memory while the
+; machine is running.  In this mode, there is less space available for the
+; program, since the RAM space is shared between instructions and the runtime
+; state.
+if defined USE_LOADER
+
+PROGRAM_BASE:           equ $2800
+PROGRAM_SIZE:           equ 4096
+FONT_BASE:              equ $3800
+FONT_SIZE:              equ 1024
+
+else
+
+PROGRAM_BASE:           equ $0100
+PROGRAM_SIZE:           equ 6912
+FONT_BASE:              equ $1C00
+FONT_SIZE:              equ 1024
+
+endif
 
 ; Input button bitmask indices.
 INPUT_LEFT:             equ 0
@@ -57,7 +72,7 @@ org $0000
 
 rst00:
     ld sp, STACK_BASE + STACK_SIZE
-    jp loader
+    jp start
     db 0, 0
 rst08:
     db 0, 0, 0, 0, 0, 0, 0, 0
@@ -94,17 +109,11 @@ nmi.call:
     ld hl, (nmi_handler_address)
     jp (hl)
 
-; --- Main Program ------------------------------------------------------------
+; --- Entry Point -------------------------------------------------------------
 
-org $0100
+if defined USE_LOADER
 
-loader:
-    ld a, 0
-    ld (nmi_handler_enable), a
-    ld hl, 0
-    ld (nmi_handler_address), hl
-    jp entry
-
+start:
     im 1
     ei
     ld a, 0
@@ -136,26 +145,33 @@ _set_h:
     ld h, a
     jp _wait_clock_low
 _set_l:
-   in a, (INPUT_PORT2)
+    in a, (INPUT_PORT2)
     ld l, a
     jp _wait_clock_low
 _write:
-   in a, (INPUT_PORT2)
+    in a, (INPUT_PORT2)
     ld (hl), a
     inc hl
-   jp _wait_clock_low
+    jp _wait_clock_low
 _debug:
     in a, (INPUT_PORT2)
     ld ($6000), a
-   jp _wait_clock_low
+    jp _wait_clock_low
 _execute:
-   jp (hl)
+    jp (hl)
 
-; --- RAM Program Space -------------------------------------------------------
+else
 
-org PROGRAM_RAM_BASE
+start:
+    jp main
 
-entry:
+endif
+
+; --- Program -----------------------------------------------------------------
+
+org PROGRAM_BASE
+
+main:
     jp tetris_main
 
 include "video.asm"

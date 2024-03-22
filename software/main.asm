@@ -54,6 +54,9 @@ org COMMON_RAM_BASE
 
 sp_stash:               ds 2    ; Temporary storage for the stack pointer.
 
+nmi_handler_vector:     ds 2
+nmi_handler_enable:     ds 1
+
 input_state:            ds 1    ; Button state bitmask (1 = down).
 input_pressed:          ds 1    ; Button press bitmask (1 = pressed).
 input_released:         ds 1    ; Button release bitmask (1 = released).
@@ -92,21 +95,18 @@ rst38:
 
 org $0066
 
-nmi_handler_address:    equ $3E00 ; (2) pointer to NMI handler routine.
-nmi_handler_enable:     equ $3E02 ; (1) when non-zero, enable NMI handler.
-
 nmi:
     push af
     push hl
     ld a, (nmi_handler_enable)
     and a
-    call nz, nmi.call
-nmi.exit:
+    call nz, _call
+_exit:
     pop hl
     pop af
     retn
-nmi.call:
-    ld hl, (nmi_handler_address)
+_call:
+    ld hl, (nmi_handler_vector)
     jp (hl)
 
 ; --- Entry Point -------------------------------------------------------------
@@ -119,7 +119,7 @@ start:
     ld a, 0
     ld (nmi_handler_enable), a
     ld hl, 0
-    ld (nmi_handler_address), hl
+    ld (nmi_handler_vector), hl
 _wait_clock_low:
     in a, (INPUT_PORT1)
     bit 7, a

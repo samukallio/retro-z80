@@ -15,6 +15,7 @@ tetris_score:                   ds 3    ; Player score (6 BCD).
 tetris_clear_count:             ds 3    ; Cleared line count (6 BCD).
 tetris_piece_count_array:       ds 7*2  ; Piece counts (7 pieces, 4 BCD each).
 tetris_piece_count_dirty:       ds 7    ; Piece count was modified since last frame?
+tetris_lines_to_next_level:     ds 1    ; Number of lines to go until next level.
 
 ; Active piece.
 tetris_active_position:         ds 2    ; Current frame position.
@@ -619,14 +620,16 @@ _scan_next:
     ld a, 20
     sub c
     jp z, _exit
+    ld b, a
 
     ; Add number of cleared lines to the clear counter.
     ld h, 0
-    ld l, a
+    ld l, b
     ld de, tetris_clear_count
     call bcd_add
 
     ; Add score according to the number of lines cleared.
+    ld a, b
     dec a
     add a, a
     ld d, 0
@@ -639,6 +642,21 @@ _scan_next:
     ex de, hl
     ld de, tetris_score
     call bcd_add
+
+    ; Update the number of lines until next level, and increment
+    ; the level if it becomes zero or less.
+    ld de, tetris_lines_to_next_level
+    ld a, (de)
+    sub b
+    jr c, _increment_level
+    jr z, _increment_level
+    jr _after_increment_level
+_increment_level:
+    add a, 10
+    ld hl, tetris_level
+    inc (hl)
+_after_increment_level:
+    ld (de), a
 
     ; Clear rows in the playfield.
     ld ix, tetris_field_clear_map
@@ -719,9 +737,8 @@ tetris_initialize:
     ld (hl), 0
     ldir
 
-    ; Set level 1.
-    ld a, 1
-    ld (tetris_level), a
+    ld a, 10
+    ld (tetris_lines_to_next_level), a
 
     ;
     call random_initialize
@@ -907,7 +924,10 @@ tetris_update:
 
     ; Reset the fall timer and force a downward shift.
     ld (hl), 50
-    jr _shift_down
+    ld bc, $FF00
+    call tetris_active_shift
+    jr c, _freeze
+    jr _done
 
 _input:
     ; Edge triggered inputs.
@@ -939,6 +959,9 @@ _shift_right:
     jr _done
 
 _shift_down:
+    ld hl, $0001
+    ld de, tetris_score
+    call bcd_add
     ld bc, $FF00
     call tetris_active_shift
     jr c, _freeze

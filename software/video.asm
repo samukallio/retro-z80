@@ -233,51 +233,88 @@ _done:
 ;   Draw a number (stored as BCD digits) into video memory.
 ;
 ;   Parameters:
+;       B   Number of digits to draw.
+;           If bit 7 is set, skip leading zeroes.
 ;       DE  Pointer to number.
-;       B   Number of digit pairs to draw.
 ;       H   Target row.
 ;       L   Target column.
 ;
 ;   Destroys:
 ;       AF, B, DE, L, IX
 ;
-video_draw_number:
-    ; If bit 7 of B is set, skip leading zeroes.
+video_draw_bcd_number:
+    ; Advance DE to one past the last digit pair.
+    ld a, b
+    and $7F
+    ret z
+    dec a
+    rra
+_seek_loop:
+    jr z, _seek_done
+    inc de
+    dec a
+    jr _seek_loop
+_seek_done:
+
+    ;
     bit 7, b
     jr nz, _skip
+    jr _draw
 
-_draw_loop:
-    ld a, (de)
-_draw_upper:
-    and $F0
-    rrca
-    rrca
-    rrca
-    rrca
-    add a, '0'
-    call video_draw_character
-    inc l
-    ld a, (de)
-    inc de
-_draw_lower:
-    and $0F
-    add a, '0'
-    call video_draw_character
-    inc l
-    djnz _draw_loop
-    ret
-
+    ; Skip leading zero digits.
 _skip:
     res 7, b
-_skip_loop:
+    bit 0, b
+    jr nz, _skip_lower
+_skip_upper:
     ld a, (de)
-    cp $10
-    jr nc, _draw_upper
-    inc de
-    and a
-    jr nz, _draw_lower
-    djnz _skip_loop
-
+    and $F0
+    jr nz, _draw_upper2
+    ld a, ' '
+    call video_draw_character
+    inc l
+    djnz _skip_lower
+    jr _skip_done
+_skip_lower:
+    ld a, (de)
+    and $0F
+    jr nz, _draw_lower2
+    ld a, ' '
+    call video_draw_character
+    inc l
+    dec de
+    djnz _skip_upper
+_skip_done:
+    dec l
     ld a, '0'
     call video_draw_character
+    ret
+
+    ; Draw digits.
+_draw:
+    bit 0, b
+    jr nz, _draw_lower1
+_draw_upper1:
+    ld a, (de)
+    and $F0
+_draw_upper2:
+    rrca
+    rrca
+    rrca
+    rrca
+    add a, '0'
+    call video_draw_character
+    inc l
+    djnz _draw_lower1
+    jr _draw_done
+_draw_lower1:
+    ld a, (de)
+    and $0F
+_draw_lower2:
+    add a, '0'
+    call video_draw_character
+    inc l
+    dec de
+    djnz _draw_upper1
+_draw_done:
     ret

@@ -410,7 +410,7 @@ tetris_active_next:
     ld hl, tetris_piece_count_dirty
     add hl, de
     ld (hl), 1
-    ld hl, tetris_piece_count_array+2
+    ld hl, tetris_piece_count_array
     add hl, de
     add hl, de
     ld bc, 1
@@ -696,6 +696,10 @@ tetris_initialize:
     ld (hl), 0
     ldir
 
+    ; Set level 1.
+    ld a, 1
+    ld (tetris_level), a
+
     ;
     call random_initialize
 
@@ -791,8 +795,8 @@ _piece_count_loop:
     ld h, a
     ld l, $07
     ; Draw the number, up to 4 digits, no leading zeroes.
-    ld b, $82
-    call video_draw_number
+    ld b, $84
+    call video_draw_bcd_number
 _piece_count_skip:
     ex af, af'
     inc a
@@ -802,20 +806,20 @@ _piece_count_skip:
     ; Draw current level.
     ld hl, $0719
     ld de, tetris_level
-    ld b, $82
-    call video_draw_number
+    ld b, $04
+    call video_draw_bcd_number
 
     ; Draw line count.
     ld hl, $0A19
     ld de, tetris_clear_count
-    ld b, $03
-    call video_draw_number
+    ld b, $06
+    call video_draw_bcd_number
 
     ; Draw score.
     ld hl, $0D19
     ld de, tetris_score
-    ld b, $03
-    call video_draw_number
+    ld b, $06
+    call video_draw_bcd_number
 
     ; Draw next piece.
     ld hl, $111A

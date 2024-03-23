@@ -135,6 +135,12 @@ tetris_block_table:
 tetris_score_table:
     dw $0040, $0100, $0300, $1200
 
+tetris_timer_table:
+    db 48, 43, 38, 33, 28, 23, 18, 13
+    db  8,  6,  5,  5,  5,  4,  4,  4
+    db  3,  3,  3,  2,  2,  2,  2,  2
+    db  2,  2,  2,  2,  2,  1,  1,  1
+
 ; --- Program -----------------------------------------------------------------
 
 ;
@@ -750,8 +756,10 @@ tetris_initialize:
     call tetris_active_next
 
     ; Initialize movement timer.
+    ld hl, tetris_timer_table
+    ld a, (hl)
     ld hl, tetris_active_fall_timer
-    ld (hl), 50
+    ld (hl), a
 
     ; Mark all piece counts as dirty.
     ld b, 7
@@ -922,8 +930,23 @@ tetris_update:
     dec (hl)
     jr nz, _input
 
+    ; Compute the reset value for the fall timer based on the level.
+    ; If the level is 31 or less, use the timer table.  Otherwise,
+    ; reset the timer to 1 frame.
+    ld b, 1
+    ld hl, tetris_level
+    ld a, (hl)
+    cp 32
+    jr nc, _reset_timer
+    ld h, 0
+    ld l, a
+    ld de, tetris_timer_table
+    add hl, de
+    ld b, (hl)
+_reset_timer:
     ; Reset the fall timer and force a downward shift.
-    ld (hl), 50
+    ld hl, tetris_active_fall_timer
+    ld (hl), b
     ld bc, $FF00
     call tetris_active_shift
     jr c, _freeze

@@ -318,3 +318,83 @@ _draw_lower2:
     djnz _draw_upper1
 _draw_done:
     ret
+
+;
+;   Draw a number (stored as BCD digits) into video memory, left-justified.
+;   
+;   Parameters:
+;       B   Length of the number, in bytes.
+;       DE  Pointer to number.
+;       H   Target row.
+;       L   Target column.
+;
+;   Destroys:
+;       AF, B, DE, L, IX
+;
+video_draw_bcd_left:
+    ; Move DE to one past the last byte of the number.
+    ld a, b
+    add a, e
+    ld e, a
+    ld a, 0
+    adc a, d
+    ld d, a
+
+    ; Skip leading zero bytes.
+    ld c, 0
+_skip_loop:
+    dec de
+    ld a, (de)
+    dec b
+    jr z, _skip_done
+    or a
+    jr nz, _skip_done
+    inc c
+    jr _skip_loop
+
+_skip_done:
+    ; C is the number of non-zero leading bytes.  To get the number of
+    ; non-zero leading digits, double C and add 1 if the upper digit of
+    ; the current byte is zero.
+    cp $10
+    rl c
+    ; If the upper digit of the current byte is zero, then it should also
+    ; be skipped.
+    and $F0
+    jr nz, _draw_upper
+
+    ; Load and draw lower digit from current byte.
+_load_lower:
+    ld a, (de)
+    and $0F
+_draw_lower:
+    add a, '0'
+    call video_draw_character
+    inc l
+    dec b
+    jp m, _load_space
+
+    ; Load and draw upper digit from current byte.
+_load_upper:
+    dec de
+    ld a, (de)
+    and $F0
+_draw_upper:
+    rrca
+    rrca
+    rrca
+    rrca
+    add a, '0'
+    call video_draw_character
+    inc l
+    jr _load_lower
+
+    ; Draw trailing space.
+_load_space:
+    ld b, c
+    ld a, ' '
+_draw_space:
+    call video_draw_character
+    inc l
+    djnz _draw_space
+    ret

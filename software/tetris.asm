@@ -806,8 +806,8 @@ _piece_count_skip:
     ; Draw current level.
     ld hl, $0719
     ld de, tetris_level
-    ld b, $04
-    call video_draw_bcd_number
+    ld b, $02
+    call video_draw_bcd_left
 
     ; Draw line count.
     ld hl, $0A19

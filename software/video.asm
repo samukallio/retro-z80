@@ -283,7 +283,7 @@ _loop:
 ;       L   Target column.
 ;
 ;   Destroys:
-;       AF, B, DE, L, IX
+;       AF, BC, DE, L, IX
 ;
 video_draw_bcd_right:
     ; Move DE to one past the last byte of the number.
@@ -356,7 +356,7 @@ _draw_upper:
 ;       L   Target column.
 ;
 ;   Destroys:
-;       AF, B, DE, L, IX
+;       AF, BC, DE, L, IX
 ;
 video_draw_bcd_left:
     ; Move DE to one past the last byte of the number.

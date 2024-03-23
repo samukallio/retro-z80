@@ -131,6 +131,9 @@ tetris_block_table:
     dw $89B5, $C5A3, $AD91, $0000 ; Z
     dw $0000, $0000, $0000, $0000 ; -
 
+tetris_score_table:
+    dw $0040, $0100, $0300, $1200
+
 ; --- Program -----------------------------------------------------------------
 
 ;
@@ -413,7 +416,8 @@ tetris_active_next:
     ld hl, tetris_piece_count_array
     add hl, de
     add hl, de
-    ld bc, 1
+    ex de, hl
+    ld hl, 1
     call bcd_add
 
 _randomize:
@@ -611,15 +615,30 @@ endm
 _scan_next:
     djnz _scan_loop
 
-    ; ----
-
-    ; If no full rows, exit.
-    ld a, c
-    cp 20
+    ; Compute number of cleared rows.  If zero, there's nothing more to do.
+    ld a, 20
+    sub c
     jp z, _exit
 
-    ld a, (VRAM_BASE)
-    call video_vsync
+    ; Add number of cleared lines to the clear counter.
+    ld h, 0
+    ld l, a
+    ld de, tetris_clear_count
+    call bcd_add
+
+    ; Add score according to the number of lines cleared.
+    dec a
+    add a, a
+    ld d, 0
+    ld e, a
+    ld hl, tetris_score_table
+    add hl, de
+    ld e, (hl)
+    inc hl
+    ld d, (hl)
+    ex de, hl
+    ld de, tetris_score
+    call bcd_add
 
     ; Clear rows in the playfield.
     ld ix, tetris_field_clear_map
@@ -642,6 +661,10 @@ _field_loop:
     ldir
     pop bc
     djnz _field_loop
+
+    ; 
+    ld a, (VRAM_BASE)
+    call video_vsync
 
     ; Clear rows in VRAM.
     ld ix, tetris_field_clear_map
@@ -813,7 +836,7 @@ _piece_count_skip:
     ld hl, $0A19
     ld de, tetris_clear_count
     ld b, $03
-    call video_draw_bcd
+    call video_draw_bcd_left
 
     ; Draw score.
     ld hl, $0D19
@@ -883,7 +906,7 @@ tetris_update:
     jr nz, _input
 
     ; Reset the fall timer and force a downward shift.
-    ld (hl), 1
+    ld (hl), 50
     jr _shift_down
 
 _input:

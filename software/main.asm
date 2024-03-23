@@ -181,54 +181,34 @@ include "tetris.asm"
 ;   Add to BCD number.
 ;
 ;   Inputs:
-;       HL  Pointer to end of BCD number.
-;       BC  Number to add.
-;
-bcd_add_old:
-    ex af, af'
-    dec hl
-    ld a, (hl)
-    add a, c
-    daa
-    ld (hl), a
-    dec hl
-    ld a, (hl)
-    adc a, b
-    daa
-    ld (hl), a
-    ex af, af'
-    ret
-
-
-;
-;   Add to BCD number.
-;
-;   Inputs:
-;       HL  Pointer to BCD number.
-;       BC  Number to add.
+;       DE  Pointer to BCD number.
+;       HL  Number to add.
 ;
 ;   Destroys:
-;       A, C, HL
+;       DE, H
 ;
 bcd_add:
+    ex af, af'
+
     ; Add to first two digits.
-    ld a, (hl)
-    add a, c
+    ld a, (de)
+    add a, l
     daa
-    ld (hl), a
+    ld (de), a
 
     ; Add to next two digits.
 _loop:
-    inc hl
-    ld a, (hl)
-    adc a, b
+    inc de
+    ld a, (de)
+    adc a, h
     daa
-    ld (hl), a
+    ld (de), a
 
     ; Keep propagating the carry to higher digits.
-    ld b, 0
+    ld h, 0
     jr c, _loop
 
+    ex af, af'
     ret
 
 ;

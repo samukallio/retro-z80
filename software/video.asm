@@ -234,7 +234,6 @@ _done:
 ;
 ;   Parameters:
 ;       B   Number of digits to draw.
-;           If bit 7 is set, skip leading zeroes.
 ;       DE  Pointer to number.
 ;       H   Target row.
 ;       L   Target column.
@@ -242,62 +241,19 @@ _done:
 ;   Destroys:
 ;       AF, B, DE, L, IX
 ;
-video_draw_bcd_number:
-    ; Advance DE to one past the last digit pair.
+video_draw_bcd:
+    ; Move DE to one past the last byte of the number.
     ld a, b
-    and $7F
-    ret z
-    dec a
-    rra
-_seek_loop:
-    jr z, _seek_done
-    inc de
-    dec a
-    jr _seek_loop
-_seek_done:
+    add a, e
+    ld e, a
+    jr nc, _loop
+    inc d
 
-    ;
-    bit 7, b
-    jr nz, _skip
-    jr _draw
-
-    ; Skip leading zero digits.
-_skip:
-    res 7, b
-    bit 0, b
-    jr nz, _skip_lower
-_skip_upper:
-    ld a, (de)
-    and $F0
-    jr nz, _draw_upper2
-    ld a, ' '
-    call video_draw_character
-    inc l
-    djnz _skip_lower
-    jr _skip_done
-_skip_lower:
-    ld a, (de)
-    and $0F
-    jr nz, _draw_lower2
-    ld a, ' '
-    call video_draw_character
-    inc l
+_loop:
+    ; Load and draw upper digit.
     dec de
-    djnz _skip_upper
-_skip_done:
-    dec l
-    ld a, '0'
-    call video_draw_character
-    ret
-
-    ; Draw digits.
-_draw:
-    bit 0, b
-    jr nz, _draw_lower1
-_draw_upper1:
     ld a, (de)
     and $F0
-_draw_upper2:
     rrca
     rrca
     rrca
@@ -305,22 +261,93 @@ _draw_upper2:
     add a, '0'
     call video_draw_character
     inc l
-    djnz _draw_lower1
-    jr _draw_done
-_draw_lower1:
+
+    ; Load and draw lower digit.
     ld a, (de)
     and $0F
-_draw_lower2:
     add a, '0'
     call video_draw_character
     inc l
-    dec de
-    djnz _draw_upper1
-_draw_done:
+
+    djnz _loop
     ret
 
 ;
-;   Draw a number (stored as BCD digits) into video memory, left-justified.
+;   Draw a number (stored as BCD digits) into video memory
+;   without leading zeroes, right-justified.
+;   
+;   Parameters:
+;       B   Length of the number, in bytes.
+;       DE  Pointer to number.
+;       H   Target row.
+;       L   Target column.
+;
+;   Destroys:
+;       AF, B, DE, L, IX
+;
+video_draw_bcd_right:
+    ; Move DE to one past the last byte of the number.
+    ld a, b
+    add a, e
+    ld e, a
+    jr nc, _skip_loop
+    inc d
+
+_skip_loop:
+    dec de
+    ld a, (de)
+    dec b
+    jr z, _skip_done
+    or a
+    jr nz, _skip_done
+    ld a, ' '
+    call video_draw_character
+    inc l
+    call video_draw_character
+    inc l
+    jr _skip_loop
+
+_skip_done:
+    ; If the upper digit of the current byte is zero, then it should also
+    ; be skipped.
+    and $F0
+    jr nz, _draw_upper
+
+    ld a, ' '
+    call video_draw_character
+    inc l
+
+    ; Load and draw lower digit from current byte.
+_load_lower:
+    ld a, (de)
+    and $0F
+_draw_lower:
+    add a, '0'
+    call video_draw_character
+    inc l
+    dec b
+    ret m
+
+    ; Load and draw upper digit from current byte.
+_load_upper:
+    dec de
+    ld a, (de)
+    and $F0
+_draw_upper:
+    rrca
+    rrca
+    rrca
+    rrca
+    add a, '0'
+    call video_draw_character
+    inc l
+    jr _load_lower
+
+    ret
+
+;
+;   Draw a number (stored as BCD digits) into video memory
+;   without leading zeroes, left-justified.
 ;   
 ;   Parameters:
 ;       B   Length of the number, in bytes.
@@ -336,11 +363,11 @@ video_draw_bcd_left:
     ld a, b
     add a, e
     ld e, a
-    ld a, 0
-    adc a, d
-    ld d, a
+    jr nc, _skip
+    inc d
 
     ; Skip leading zero bytes.
+_skip:
     ld c, 0
 _skip_loop:
     dec de
@@ -351,7 +378,6 @@ _skip_loop:
     jr nz, _skip_done
     inc c
     jr _skip_loop
-
 _skip_done:
     ; C is the number of non-zero leading bytes.  To get the number of
     ; non-zero leading digits, double C and add 1 if the upper digit of

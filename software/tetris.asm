@@ -795,8 +795,8 @@ _piece_count_loop:
     ld h, a
     ld l, $01
     ; Draw the number, up to 4 digits, no leading zeroes.
-    ld b, $84
-    call video_draw_bcd_number
+    ld b, $02
+    call video_draw_bcd_right
 _piece_count_skip:
     ex af, af'
     inc a
@@ -812,14 +812,14 @@ _piece_count_skip:
     ; Draw line count.
     ld hl, $0A19
     ld de, tetris_clear_count
-    ld b, $06
-    call video_draw_bcd_number
+    ld b, $03
+    call video_draw_bcd
 
     ; Draw score.
     ld hl, $0D19
     ld de, tetris_score
-    ld b, $06
-    call video_draw_bcd_number
+    ld b, $03
+    call video_draw_bcd
 
     ; Draw next piece.
     ld hl, $111A

@@ -746,7 +746,7 @@ _piece_count_dirty_loop:
 
     ; Draw the pieces shown in the statistics panel.
     ld a, 0
-    ld hl, $0702
+    ld hl, $0706
 _piece_count_loop:
     push hl
     push af
@@ -793,7 +793,7 @@ _piece_count_loop:
     add a, l
     add a, $08
     ld h, a
-    ld l, $07
+    ld l, $01
     ; Draw the number, up to 4 digits, no leading zeroes.
     ld b, $84
     call video_draw_bcd_number

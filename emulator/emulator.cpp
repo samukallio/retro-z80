@@ -78,14 +78,8 @@ Z80EX_BYTE interrupt_read(Z80EX_CONTEXT* cpu, void* user_data)
 	return 0;
 }
 
-i64 const VIDEO_CYCLES = 256 * 512;
-i64 const FRAME_CYCLES = 312 * 512;
-
 int main()
 {
-	int const SCREEN_WIDTH = 1024;
-	int const SCREEN_HEIGHT = 1024;
-
 	FILE* file = fopen("../software/image.bin", "rb");
 	if (!file) {
 		printf("cannot open image.bin\n");
@@ -145,6 +139,9 @@ int main()
 			| (keys[SDL_SCANCODE_DOWN]   << 3)
 			| (keys[SDL_SCANCODE_SPACE]  << 4)
 			| (keys[SDL_SCANCODE_RETURN] << 5);
+
+		i64 const VIDEO_CYCLES = 256 * 512;
+		i64 const FRAME_CYCLES = 312 * 512;
 
 		// Run for one frame.
 		bool nmi_accepted = false;

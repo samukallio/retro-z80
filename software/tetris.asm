@@ -189,6 +189,9 @@ tetris_piece_draw:
 _loop:
     pop ix
     add ix, de
+    ld a, ixh
+    cp $40 + 6
+    jr c, _next
     exx
     ld (ix-$80), $FF
     ld (ix-$60), b
@@ -199,6 +202,7 @@ _loop:
     ld (ix+$40), l
     ld (ix+$60), $FF
     exx
+_next:
     djnz _loop
 
     ld sp, (sp_stash)
@@ -234,6 +238,9 @@ tetris_piece_erase:
 _loop:
     pop ix
     add ix, de
+    ld a, ixh
+    cp $40 + 6
+    jr c, _next
     ld (ix-$80), $00
     ld (ix-$60), $00
     ld (ix-$40), $00
@@ -242,6 +249,7 @@ _loop:
     ld (ix+$20), $00
     ld (ix+$40), $00
     ld (ix+$60), $00
+_next:
     djnz _loop
 
     ld sp, (sp_stash)
@@ -402,7 +410,7 @@ tetris_active_next:
     ; Update active piece.
     ld a, (tetris_next_piece)
     ld (tetris_active_piece), a
-    ld de, $1303
+    ld de, $1503
     ld (tetris_active_position), de
 
     ; If the next piece code was -1, then we are initializing, so skip

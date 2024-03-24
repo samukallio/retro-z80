@@ -661,8 +661,15 @@ _scan_next:
     inc hl
     ld d, (hl)
     ex de, hl
+    ld a, (tetris_level)
+    inc a
+_score_loop:
+    push hl
     ld de, tetris_score
     call bcd_add
+    pop hl
+    dec a
+    jr nz, _score_loop
 
     ; Update the number of lines until next level, and increment
     ; the level if it becomes zero or less.

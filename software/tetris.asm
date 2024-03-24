@@ -16,6 +16,7 @@ tetris_clear_count:             ds 3    ; Cleared line count (6 BCD).
 tetris_piece_count_array:       ds 7*2  ; Piece counts (7 pieces, 4 BCD each).
 tetris_piece_count_dirty:       ds 7    ; Piece count was modified since last frame?
 tetris_lines_to_next_level:     ds 1    ; Number of lines to go until next level.
+tetris_restart_choice:          ds 1
 
 ; Active piece.
 tetris_active_position:         ds 2    ; Current frame position.
@@ -45,6 +46,12 @@ tetris_clear_count_label:       defb "LINES", 0
 tetris_score_label:             defb "SCORE", 0
 tetris_next_label:              defb "NEXT", 0
 tetris_piece_count_label:       defb "STATISTICS", 0
+
+tetris_text_game_over:          defb "Game Over!", 0
+tetris_text_empty_line:         defb "          ", 0
+tetris_text_restart:            defb "Restart?", 0
+tetris_text_yes:                defb "Yes", 0
+tetris_text_no:                 defb "No", 0
 
 tetris_piece_table:
     ; Rotation 1
@@ -1006,24 +1013,114 @@ _rotate_ccw:
     call tetris_active_rotate_ccw
     jr _done
 
-    ; Freeze the piece in place.
 _freeze:
-    ld a, (tetris_active_piece)
+    ; Check for lock out (trying to freeze a piece at the spawn position).
     ld de, (tetris_active_position)
+    ld a, d
+    sub 21
+    jr z, _lock_out
+
+    ; Place the piece.
+    ld a, (tetris_active_piece)
     call tetris_field_place
+
+    ; Clear full rows.
     call tetris_field_clear
     call tetris_active_next
 
 _done:
+    xor a
+    ret
+
+_lock_out:
+    xor a
+    inc a
+    ret
+
+;
+;   Game over screen.
+;
+tetris_game_over:
+    ; Clear the playfield.
+    ld b, 20
+    ld hl, $060D
+_clear_loop:
+    call video_vsync
+    call video_vsync
+    push hl
+    push bc
+    ld de, tetris_text_empty_line
+    call video_draw_text
+    pop bc
+    pop hl
+    inc h
+    djnz _clear_loop
+
+    ; Display game over menu.
+    ld hl, $0D0D
+    ld de, tetris_text_game_over
+    call video_draw_text
+    ld hl, $0F0E
+    ld de, tetris_text_restart
+    call video_draw_text
+    ld hl, $1110
+    ld de, tetris_text_yes
+    call video_draw_text
+    ld hl, $1210
+    ld de, tetris_text_no
+    call video_draw_text
+
+_select_loop:
+    call video_vsync
+    ld a, (tetris_restart_choice)
+    add a, $11
+    ld h, a
+    ld l, $0E
+    ld a, ' '
+    call video_draw_character
+    call input_update
+    ld a, (input_pressed)
+    bit 2, a
+    jr nz, _select_yes
+    bit 3, a
+    jr nz, _select_no
+    bit 5, a
+    jr nz, _exit
+    jr _select_keep
+_select_yes:
+    ld a, 0
+    ld (tetris_restart_choice), a
+    jr _select_keep
+_select_no:
+    ld a, 1
+    ld (tetris_restart_choice), a
+    jr _select_keep
+_select_keep:
+    ld a, (tetris_restart_choice)
+    add a, $11
+    ld h, a
+    ld l, $0E
+    ld a, '>'
+    call video_draw_character
+    jr _select_loop
+
+_exit:
     ret
 
 ;
 ;   Main program.
 ;
 tetris_main:
+_main_loop:
     call tetris_initialize
 
-_loop:
+_game_loop:
     call tetris_render
     call tetris_update
-    jp _loop
+    jr z, _game_loop
+
+    ;
+    cp 1
+    call z, tetris_game_over
+    jp _main_loop
+

@@ -12,8 +12,11 @@ add_subdirectory(z80ex)
 add_executable(emulator emulator.cpp)
 
 set_target_properties(
-	emulator
-	PROPERTIES CXX_STANDARD 20)
+	emulator PROPERTIES
+	CXX_STANDARD 20
+	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}
+	RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}
+	RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR})
 
 target_include_directories(
 	emulator

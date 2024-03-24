@@ -17,6 +17,8 @@ using u64 = std::uint64_t;
 
 struct Machine
 {
+	u64 frame_cycle;
+	Z80EX_CONTEXT* cpu;
 	u8 ram[8192];
 	u8 rom[8192];
 	u8 vram[8192];
@@ -78,6 +80,84 @@ Z80EX_BYTE interrupt_read(Z80EX_CONTEXT* cpu, void* user_data)
 	return 0;
 }
 
+void save_state(Machine* m, char const* path)
+{
+	FILE* file = fopen(path, "wb");
+
+	u16 word = 0;
+
+#define WRITE_REGISTER(REG) \
+	word = z80ex_get_reg(m->cpu, REG); \
+	fwrite(&word, sizeof(u16), 1, file);
+
+	WRITE_REGISTER(regAF);
+	WRITE_REGISTER(regBC);
+	WRITE_REGISTER(regDE);
+	WRITE_REGISTER(regHL);
+	WRITE_REGISTER(regAF_);
+	WRITE_REGISTER(regBC_);
+	WRITE_REGISTER(regDE_);
+	WRITE_REGISTER(regHL_);
+	WRITE_REGISTER(regIX);
+	WRITE_REGISTER(regIY);
+	WRITE_REGISTER(regPC);
+	WRITE_REGISTER(regSP);
+	WRITE_REGISTER(regI);
+	WRITE_REGISTER(regR);
+	WRITE_REGISTER(regR7);
+	WRITE_REGISTER(regIM);
+	WRITE_REGISTER(regIFF1);
+	WRITE_REGISTER(regIFF2);
+
+#undef WRITE_REGISTER
+
+fwrite(&m->frame_cycle, sizeof(u64), 1, file);
+
+fwrite(m->ram, sizeof(u8), 8192, file);
+fwrite(m->vram, sizeof(u8), 8192, file);
+
+fclose(file);
+}
+
+void load_state(Machine* m, char const* path)
+{
+	FILE* file = fopen(path, "rb");
+
+	u16 word = 0;
+
+#define READ_REGISTER(REG) \
+	fread(&word, sizeof(u16), 1, file); \
+	z80ex_set_reg(m->cpu, REG, word);
+
+	READ_REGISTER(regAF);
+	READ_REGISTER(regBC);
+	READ_REGISTER(regDE);
+	READ_REGISTER(regHL);
+	READ_REGISTER(regAF_);
+	READ_REGISTER(regBC_);
+	READ_REGISTER(regDE_);
+	READ_REGISTER(regHL_);
+	READ_REGISTER(regIX);
+	READ_REGISTER(regIY);
+	READ_REGISTER(regPC);
+	READ_REGISTER(regSP);
+	READ_REGISTER(regI);
+	READ_REGISTER(regR);
+	READ_REGISTER(regR7);
+	READ_REGISTER(regIM);
+	READ_REGISTER(regIFF1);
+	READ_REGISTER(regIFF2);
+
+#undef READ_REGISTER
+
+	fread(&m->frame_cycle, sizeof(u64), 1, file);
+
+	fread(m->ram, sizeof(u8), 8192, file);
+	fread(m->vram, sizeof(u8), 8192, file);
+
+	fclose(file);
+}
+
 int main()
 {
 	FILE* file = fopen("../software/image.bin", "rb");
@@ -89,18 +169,20 @@ int main()
 	auto m = new Machine;
 	assert(m);
 
+	m->frame_cycle = 0;
+
 	fread(m->rom, 1, 8192, file);
 	fread(m->ram, 1, 8192, file);
 	memset(m->vram, 0, 8192);
- 	fclose(file);
+	fclose(file);
 
-	auto z80 = z80ex_create(
+	m->cpu = z80ex_create(
 		memory_read, m,
 		memory_write, m,
 		port_read, m,
 		port_write, m,
 		interrupt_read, m);
-	assert(z80);
+	assert(m->cpu);
 
 	SDL_SetMainReady();
 
@@ -116,8 +198,6 @@ int main()
 	assert(surface);
 
 	// Accumulates cycles.
-	i64 cycles = 0;
-
 	u64 initial_ticks = SDL_GetTicks64();
 	u64 current_frame = 0;
 
@@ -128,6 +208,13 @@ int main()
 			if (event.type == SDL_QUIT) {
 				exit = true;
 				break;
+			}
+
+			if (event.type == SDL_KEYDOWN) {
+				if (event.key.keysym.scancode == SDL_SCANCODE_F1)
+					save_state(m, "state.dat");
+				if (event.key.keysym.scancode == SDL_SCANCODE_F2)
+					load_state(m, "state.dat");
 			}
 		}
 
@@ -145,18 +232,18 @@ int main()
 
 		// Run for one frame.
 		bool nmi_accepted = false;
-		while (cycles < FRAME_CYCLES) {
+		while (m->frame_cycle < FRAME_CYCLES) {
 			// Execute one opcode.
-			cycles += z80ex_step(z80);
+			m->frame_cycle += z80ex_step(m->cpu);
 
 			// Entering vertical blank, assert NMI.
-			if (cycles >= VIDEO_CYCLES && !nmi_accepted) {
-				i64 nmi_cycles = z80ex_nmi(z80);
-				cycles += nmi_cycles;
+			if (m->frame_cycle >= VIDEO_CYCLES && !nmi_accepted) {
+				i64 nmi_cycles = z80ex_nmi(m->cpu);
+				m->frame_cycle += nmi_cycles;
 				nmi_accepted = nmi_cycles > 0;
 			}
 		}
-		cycles -= FRAME_CYCLES;
+		m->frame_cycle -= FRAME_CYCLES;
 
 		// Copy VRAM contents onto the window surface.
 		SDL_LockSurface(surface);

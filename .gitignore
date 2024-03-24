@@ -33,6 +33,7 @@ software/*.sym
 # Emulator
 emulator/*.exe
 emulator/*.pdb
+emulator/state.dat
 emulator/build
 emulator/sdl2/*
 !emulator/sdl2/.empty

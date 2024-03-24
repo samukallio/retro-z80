@@ -20,6 +20,7 @@ struct Machine
 	u8 rom[8192];
 	u8 vram[8192];
 	u16 vram_address;
+	u8 port_data[2];
 };
 
 Z80EX_BYTE memory_read(Z80EX_CONTEXT* cpu, Z80EX_WORD addr, int m1_state, void* user_data)
@@ -63,7 +64,7 @@ void memory_write(Z80EX_CONTEXT* cpu, Z80EX_WORD addr, Z80EX_BYTE value, void* u
 Z80EX_BYTE port_read(Z80EX_CONTEXT* cpu, Z80EX_WORD port, void* user_data)
 {
 	auto m = static_cast<Machine*>(user_data);
-	return 0;
+	return m->port_data[port & 1];
 }
 
 void port_write(Z80EX_CONTEXT* cpu, Z80EX_WORD port, Z80EX_BYTE value, void* user_data)
@@ -131,6 +132,15 @@ int main()
 				break;
 			}
 		}
+
+		const u8* keys = SDL_GetKeyboardState(nullptr);
+		m->port_data[1]
+			= (keys[SDL_SCANCODE_LEFT]   << 0)
+			| (keys[SDL_SCANCODE_RIGHT]  << 1)
+			| (keys[SDL_SCANCODE_UP]     << 2)
+			| (keys[SDL_SCANCODE_DOWN]   << 3)
+			| (keys[SDL_SCANCODE_SPACE]  << 4)
+			| (keys[SDL_SCANCODE_RETURN] << 5);
 
 		// Run for one frame.
 		bool nmi_accepted = false;

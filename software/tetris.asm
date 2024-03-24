@@ -921,9 +921,6 @@ _erase_piece_skip:
 ;   Update game logic.
 ;
 tetris_update:
-    ; Read controller input.
-    call input_update
-
     ; Decrement the fall timer, and if it has not reached zero yet, then
     ; let the user perform an input action.
     ld hl, tetris_active_fall_timer
@@ -953,6 +950,9 @@ _reset_timer:
     jr _done
 
 _input:
+    ; Read controller input.
+    call input_update
+
     ; Edge triggered inputs.
     ld a, (input_pressed)
     bit 0, a

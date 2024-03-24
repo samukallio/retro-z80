@@ -84,9 +84,9 @@ int main()
 	int const SCREEN_WIDTH = 1024;
 	int const SCREEN_HEIGHT = 1024;
 
-	FILE* file = fopen("../software/main.bin", "rb");
+	FILE* file = fopen("../software/image.bin", "rb");
 	if (!file) {
-		printf("cannot open main.bin\n");
+		printf("cannot open image.bin\n");
 		return -1;
 	}
 

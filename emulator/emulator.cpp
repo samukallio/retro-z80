@@ -13,6 +13,7 @@ using u16 = std::uint16_t;
 using u32 = std::uint32_t;
 using i32 = std::int32_t;
 using i64 = std::int64_t;
+using u64 = std::uint64_t;
 
 struct Machine
 {
@@ -123,6 +124,9 @@ int main()
 	// Accumulates cycles.
 	i64 cycles = 0;
 
+	u64 initial_ticks = SDL_GetTicks64();
+	u64 current_frame = 0;
+
 	bool exit = false;
 	while (!exit) {
 		SDL_Event event;
@@ -175,6 +179,11 @@ int main()
 		}
 		SDL_UnlockSurface(surface);
 		SDL_UpdateWindowSurface(window);
+
+		current_frame += 1;
+
+		u64 target_ticks = initial_ticks + u64((current_frame * 1000) / 50.080128);
+		while (SDL_GetTicks64() < target_ticks);
 	}
 
 	return 0;

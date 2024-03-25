@@ -10,7 +10,8 @@ tetris_field_array:             ds 220  ; 22 rows of 10 columns each.
 tetris_field_clear_map:         ds 22
 
 ; Miscellaneous.
-tetris_level:                   ds 2    ; Current level (4 BCD).
+tetris_level:                   ds 1    ; Current level number.
+tetris_level_bcd:               ds 2    ; Current level in BCD for display.
 tetris_score:                   ds 3    ; Player score (6 BCD).
 tetris_clear_count:             ds 3    ; Cleared line count (6 BCD).
 tetris_piece_count_array:       ds 7*2  ; Piece counts (7 pieces, 4 BCD each).
@@ -718,6 +719,11 @@ _increment_level:
     add a, 10
     ld hl, tetris_level
     inc (hl)
+    push de
+    ld de, tetris_level_bcd
+    ld hl, 1
+    call bcd_add
+    pop de
 _after_increment_level:
     ld (de), a
 
@@ -919,7 +925,7 @@ _piece_count_skip:
 
     ; Draw current level.
     ld hl, $0719
-    ld de, tetris_level
+    ld de, tetris_level_bcd
     ld b, $02
     call video_draw_bcd_left
 

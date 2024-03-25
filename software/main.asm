@@ -293,10 +293,6 @@ _loop:
     exx
     ret
 
-if $ > PROGRAM_BASE + PROGRAM_SIZE
-    .error "Maximum program size exceeded!"
-endif
-
 ;
 ;   Computes the unsigned 8-bit modulo operation.
 ;
@@ -323,3 +319,7 @@ _subtract:
     jr nc, _subtract
     add a, c
     jr _subtract
+
+if $ > PROGRAM_BASE + PROGRAM_SIZE
+    .error "Maximum program size exceeded!"
+endif

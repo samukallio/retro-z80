@@ -50,6 +50,7 @@ void memory_write(Z80EX_CONTEXT* cpu, Z80EX_WORD addr, Z80EX_BYTE value, void* u
 	auto m = static_cast<Machine*>(user_data);
 	
 	if (addr >= 0x6000) {
+		printf("DEBUG: %02X\n", value);
 		return;
 	}
 	else if (addr >= 0x4000) {

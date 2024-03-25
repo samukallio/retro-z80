@@ -12,10 +12,10 @@ tetris_field_clear_map:         ds 22
 ; Miscellaneous.
 tetris_level:                   ds 1    ; Current level number.
 tetris_level_bcd:               ds 2    ; Current level in BCD for display.
-tetris_score:                   ds 3    ; Player score (6 BCD).
-tetris_clear_count:             ds 3    ; Cleared line count (6 BCD).
-tetris_piece_count_array:       ds 7*2  ; Piece counts (7 pieces, 4 BCD each).
-tetris_piece_count_dirty:       ds 7    ; Piece count was modified since last frame?
+tetris_score_bcd:               ds 3    ; Player score (6 BCD).
+tetris_lines_bcd:               ds 3    ; Cleared line count (6 BCD).
+tetris_count_bcds:              ds 7*2  ; Piece counts (7 pieces, 4 BCD each).
+tetris_count_flags:             ds 7    ; Piece count was modified since last frame?
 tetris_lines_to_next_level:     ds 1    ; Number of lines to go until next level.
 tetris_restart_choice:          ds 1
 
@@ -29,8 +29,8 @@ tetris_active_fall_timer:       ds 1    ; Number of frames until piece moves dow
 
 ; Upcoming piece.
 tetris_next_piece_old:          ds 1    ; Previous frame piece code.
-tetris_next_queue:              ds 7    ; Next 7 piece codes.
-tetris_next_queue_index:        ds 1    ; Current index into queue.
+tetris_queue:                   ds 7    ; Next 7 piece codes.
+tetris_queue_index:             ds 1    ; Current index into queue.
 
 TETRIS_RAM_SIZE:                equ $ - TETRIS_RAM_BASE
 
@@ -42,11 +42,11 @@ endif
 
 org TETRIS_ROM_BASE
 
-tetris_level_label:             defb "LEVEL", 0
-tetris_clear_count_label:       defb "LINES", 0
-tetris_score_label:             defb "SCORE", 0
-tetris_next_label:              defb "NEXT", 0
-tetris_piece_count_label:       defb "STATISTICS", 0
+tetris_text_level:              defb "LEVEL", 0
+tetris_text_lines:              defb "LINES", 0
+tetris_text_score:              defb "SCORE", 0
+tetris_text_next:               defb "NEXT", 0
+tetris_text_statistics:         defb "STATISTICS", 0
 
 tetris_text_game_over:          defb "Game Over!", 0
 tetris_text_empty_line:         defb "          ", 0
@@ -140,7 +140,7 @@ tetris_block_table:
     dw $89B5, $C5A3, $AD91, $0000 ; Z
     dw $0000, $0000, $0000, $0000 ; -
 
-tetris_score_table:
+tetris_score_bcd_table:
     dw $0040, $0100, $0300, $1200
 
 tetris_timer_table:
@@ -419,14 +419,14 @@ _loop:
 ;
 ;   Generate a new bag of 7 pieces.
 ;
-tetris_next_queue_shuffle:
+tetris_queue_shuffle:
     ; Inject some non-determinism to the first random number
     ; generation by using the refresh register.
     ld a, r
     and $07
     inc a
 
-    ld hl, tetris_next_queue
+    ld hl, tetris_queue
     ld b, 7
 _shuffle_loop:
     ; Generate a random number modulo B.
@@ -454,24 +454,24 @@ _shuffle_loop:
 
     ; Reset the queue index.
     ld a, 0
-    ld (tetris_next_queue_index), a
+    ld (tetris_queue_index), a
 
     ret
 
 ;
-;   Randomize the next piece.
+;   Pull the next piece from the queue and activate it.
 ;
-tetris_active_next:
+tetris_queue_activate_next:
     ; 
     ld a, 1
     ld (tetris_active_piece_reset), a
 
     ; Update active piece.
-    ld hl, tetris_next_queue_index
+    ld hl, tetris_queue_index
     ld d, 0
     ld e, (hl)
     inc (hl)
-    ld hl, tetris_next_queue
+    ld hl, tetris_queue
     add hl, de
     ld a, (hl)
     ld (tetris_active_piece), a
@@ -485,10 +485,10 @@ tetris_active_next:
     rrca
     ld d, 0
     ld e, a
-    ld hl, tetris_piece_count_dirty
+    ld hl, tetris_count_flags
     add hl, de
     ld (hl), 1
-    ld hl, tetris_piece_count_array
+    ld hl, tetris_count_bcds
     add hl, de
     add hl, de
     ex de, hl
@@ -496,9 +496,9 @@ tetris_active_next:
     call bcd_add
 
     ; Shuffle the bag.
-    ld a, (tetris_next_queue_index)
+    ld a, (tetris_queue_index)
     cp 7
-    call z, tetris_next_queue_shuffle
+    call z, tetris_queue_shuffle
     ret
 
 ;
@@ -682,7 +682,7 @@ _scan_next:
     ; Add number of cleared lines to the clear counter.
     ld h, 0
     ld l, b
-    ld de, tetris_clear_count
+    ld de, tetris_lines_bcd
     call bcd_add
 
     ; Add score according to the number of lines cleared.
@@ -691,7 +691,7 @@ _scan_next:
     add a, a
     ld d, 0
     ld e, a
-    ld hl, tetris_score_table
+    ld hl, tetris_score_bcd_table
     add hl, de
     ld e, (hl)
     inc hl
@@ -701,7 +701,7 @@ _scan_next:
     inc a
 _score_loop:
     push hl
-    ld de, tetris_score
+    ld de, tetris_score_bcd
     call bcd_add
     pop hl
     dec a
@@ -814,7 +814,7 @@ tetris_initialize:
     call random_initialize
 
     ;
-    ld ix, tetris_next_queue
+    ld ix, tetris_queue
     ld (ix+0), $00
     ld (ix+1), $08
     ld (ix+2), $10
@@ -822,10 +822,10 @@ tetris_initialize:
     ld (ix+4), $20
     ld (ix+5), $28
     ld (ix+6), $30
-    call tetris_next_queue_shuffle
+    call tetris_queue_shuffle
 
     ; Activate piece.
-    call tetris_active_next
+    call tetris_queue_activate_next
 
     ; Initialize movement timer.
     ld hl, tetris_timer_table
@@ -835,7 +835,7 @@ tetris_initialize:
 
     ; Mark all piece counts as dirty.
     ld b, 7
-    ld hl, tetris_piece_count_dirty
+    ld hl, tetris_count_flags
 _piece_count_dirty_loop:
     inc (hl)
     inc hl
@@ -849,19 +849,19 @@ _piece_count_dirty_loop:
     ld de, $140A
     call video_draw_frame
     ld hl, $0619
-    ld de, tetris_level_label
+    ld de, tetris_text_level
     call video_draw_text
     ld hl, $0919
-    ld de, tetris_clear_count_label
+    ld de, tetris_text_lines
     call video_draw_text
     ld hl, $0C19
-    ld de, tetris_score_label
+    ld de, tetris_text_score
     call video_draw_text
     ld hl, $0F19
-    ld de, tetris_next_label
+    ld de, tetris_text_next
     call video_draw_text
     ld hl, $0601
-    ld de, tetris_piece_count_label
+    ld de, tetris_text_statistics
     call video_draw_text
 
     ; Draw the pieces shown in the statistics panel.
@@ -898,12 +898,12 @@ _piece_count_loop:
     ld e, a
     ex af, af'
     ; Check (and clear) the dirty flag for this piece counter.
-    ld hl, tetris_piece_count_dirty
+    ld hl, tetris_count_flags
     add hl, de
     rr (hl)
     jr nc, _piece_count_skip
     ; Compute address of the piece count BCD counter into DE.
-    ld hl, tetris_piece_count_array
+    ld hl, tetris_count_bcds
     add hl, de
     add hl, de
     ex de, hl
@@ -931,13 +931,13 @@ _piece_count_skip:
 
     ; Draw line count.
     ld hl, $0A19
-    ld de, tetris_clear_count
+    ld de, tetris_lines_bcd
     ld b, $03
     call video_draw_bcd_left
 
     ; Draw score.
     ld hl, $0D19
-    ld de, tetris_score
+    ld de, tetris_score_bcd
     ld b, $03
     call video_draw_bcd
 
@@ -947,10 +947,10 @@ _erase_active_piece:
     ld a, (tetris_next_piece_old)
     call tetris_piece_erase
     ; Load the current "next piece" from the queue, and remember it.
-    ld a, (tetris_next_queue_index)
+    ld a, (tetris_queue_index)
     ld d, 0
     ld e, a
-    ld hl, tetris_next_queue
+    ld hl, tetris_queue
     add hl, de
     ld a, (hl)
     ld (tetris_next_piece_old), a
@@ -1070,7 +1070,7 @@ _shift_right:
 
 _shift_down:
     ld hl, $0001
-    ld de, tetris_score
+    ld de, tetris_score_bcd
     call bcd_add
     ld bc, $FF00
     call tetris_active_shift
@@ -1098,7 +1098,7 @@ _freeze:
 
     ; Clear full rows.
     call tetris_field_clear
-    call tetris_active_next
+    call tetris_queue_activate_next
 
 _done:
     xor a

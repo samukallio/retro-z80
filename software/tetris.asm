@@ -27,9 +27,9 @@ tetris_active_piece_reset:      ds 1    ; Piece was just placed?
 tetris_active_fall_timer:       ds 1    ; Number of frames until piece moves down.
 
 ; Upcoming piece.
-tetris_next_piece:              ds 1    ; Current frame piece code.
 tetris_next_piece_old:          ds 1    ; Previous frame piece code.
-tetris_next_random:             ds 1    ; Randomizer state.
+tetris_next_queue:              ds 7    ; Next 7 piece codes.
+tetris_next_queue_index:        ds 1    ; Current index into queue.
 
 TETRIS_RAM_SIZE:                equ $ - TETRIS_RAM_BASE
 
@@ -407,6 +407,48 @@ _loop:
     ret
 
 ;
+;   Generate a new bag of 7 pieces.
+;
+tetris_next_queue_shuffle:
+    ; Inject some non-determinism to the first random number
+    ; generation by using the refresh register.
+    ld a, r
+    and $07
+    inc a
+
+    ld hl, tetris_next_queue
+    ld b, 7
+_shuffle_loop:
+    ; Generate random number modulo B.
+    call random_generate
+_modulo_loop:
+    sub b
+    jr nc, _modulo_loop
+    cpl
+
+    ; Swap the element at (HL) with the element at (HL+A).
+    ld d, (hl)
+    push hl
+    add a, l
+    ld l, a
+    ld a, 0
+    adc a, h
+    ld h, a
+    ld e, (hl)
+    ld (hl), d
+    pop hl
+    ld (hl), e
+
+    inc hl
+    ld a, 1
+    djnz _shuffle_loop
+
+    ld a, 0
+    ld (tetris_next_queue_index), a
+
+    ret
+
+;
 ;   Randomize the next piece.
 ;
 tetris_active_next:
@@ -415,15 +457,16 @@ tetris_active_next:
     ld (tetris_active_piece_reset), a
 
     ; Update active piece.
-    ld a, (tetris_next_piece)
+    ld hl, tetris_next_queue_index
+    ld d, 0
+    ld e, (hl)
+    inc (hl)
+    ld hl, tetris_next_queue
+    add hl, de
+    ld a, (hl)
     ld (tetris_active_piece), a
     ld de, $1503
     ld (tetris_active_position), de
-
-    ; If the next piece code was -1, then we are initializing, so skip
-    ; incrementing the piece counter.
-    inc a
-    jr z, _randomize
 
     ; Increment piece counter.
     and $38
@@ -442,28 +485,10 @@ tetris_active_next:
     ld hl, 1
     call bcd_add
 
-_randomize:
-    ; Generate a random number.  Advance the generator state by 1-8 rounds
-    ; depending on the current refresh address to inject some nondeterminism
-    ; into the process.
-    ld a, r
-    and $07
-    inc a
-    call random_generate
-    ld hl, tetris_next_random
-    add a, (hl)
-_randomize_loop:
-    sub $07
-    jr nc, _randomize_loop
-    cpl
-    ld (hl), a
-
-    ; Set next piece code.
-    ld a, (tetris_next_random)
-    rlca
-    rlca
-    rlca
-    ld (tetris_next_piece), a
+    ; Shuffle the bag.
+    ld a, (tetris_next_queue_index)
+    cp 7
+    call z, tetris_next_queue_shuffle
     ret
 
 ;
@@ -765,16 +790,25 @@ tetris_initialize:
     ld (hl), 0
     ldir
 
+    ;
     ld a, 10
     ld (tetris_lines_to_next_level), a
 
     ;
     call random_initialize
 
-    ; Randomize active and next pieces.
-    ld a, -1
-    ld (tetris_next_piece), a
-    call tetris_active_next
+    ;
+    ld ix, tetris_next_queue
+    ld (ix+0), $00
+    ld (ix+1), $08
+    ld (ix+2), $10
+    ld (ix+3), $18
+    ld (ix+4), $20
+    ld (ix+5), $28
+    ld (ix+6), $30
+    call tetris_next_queue_shuffle
+
+    ; Activate piece.
     call tetris_active_next
 
     ; Initialize movement timer.
@@ -891,12 +925,20 @@ _piece_count_skip:
     ld b, $03
     call video_draw_bcd
 
-    ; Draw next piece.
+    ; Erase the previous "next piece".
     ld hl, $111A
     ld a, (tetris_next_piece_old)
     call tetris_piece_erase
+    ; Load the current "next piece" from the queue, and remember it.
+    ld a, (tetris_next_queue_index)
+    ld d, 0
+    ld e, a
+    ld hl, tetris_next_queue
+    add hl, de
+    ld a, (hl)
+    ld (tetris_next_piece_old), a
+    ; Draw the current "next piece".
     ld hl, $111A
-    ld a, (tetris_next_piece)
     call tetris_piece_draw
 
     ; Erase previous active piece (if needed).
@@ -932,8 +974,6 @@ _erase_piece_skip:
     ld (tetris_active_piece_old), a
     ld de, (tetris_active_position)
     ld (tetris_active_position_old), de
-    ld a, (tetris_next_piece)
-    ld (tetris_next_piece_old), a
 
     ; Reset VRAM address.
     ld a, (VRAM_BASE)

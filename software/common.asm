@@ -37,12 +37,13 @@ modulo:
 _shift:
     rlc c
     jr nc, _shift
-_subtract:
+_check:
     cp b
     ret c
+_subtract:
     rrc c
     sub c
-    jr nc, _subtract
+    jr nc, _check
     add a, c
     jr _subtract
 

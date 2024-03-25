@@ -430,10 +430,7 @@ tetris_next_queue_shuffle:
 _shuffle_loop:
     ; Generate a random number modulo B.
     call random_generate
-_modulo_loop:
-    sub b
-    jr nc, _modulo_loop
-    cpl
+    call modulo
 
     ; Swap the element at (HL) with the element at (HL+A).
     ld d, (hl)

@@ -296,3 +296,30 @@ _loop:
 if $ > PROGRAM_BASE + PROGRAM_SIZE
     .error "Maximum program size exceeded!"
 endif
+
+;
+;   Computes the unsigned 8-bit modulo operation.
+;
+;   Inputs:
+;       A   Dividend.
+;       B   Divisor.
+;
+;   Outputs:
+;       A   Remainder.
+;
+;   Destroys:
+;       C
+;
+modulo:
+    ld c, b
+_shift:
+    rlc c
+    jr nc, _shift
+_subtract:
+    cp b
+    ret c
+    rrc c
+    sub c
+    jr nc, _subtract
+    add a, c
+    jr _subtract

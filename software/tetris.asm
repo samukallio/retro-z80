@@ -196,9 +196,12 @@ tetris_piece_draw:
 _loop:
     pop ix
     add ix, de
+
+    ; If the block is in the hidden vanish zone, skip it.
     ld a, ixh
     cp $40 + 6
     jr c, _next
+
     exx
     ld (ix-$80), $FF
     ld (ix-$60), b
@@ -209,6 +212,7 @@ _loop:
     ld (ix+$40), l
     ld (ix+$60), $FF
     exx
+
 _next:
     djnz _loop
 
@@ -245,9 +249,13 @@ tetris_piece_erase:
 _loop:
     pop ix
     add ix, de
+
+    ; If the block is in the hidden vanish zone, skip it.
     ld a, ixh
     cp $40 + 6
     jr c, _next
+
+    ; Place the
     ld (ix-$80), $00
     ld (ix-$60), $00
     ld (ix-$40), $00
@@ -256,6 +264,7 @@ _loop:
     ld (ix+$20), $00
     ld (ix+$40), $00
     ld (ix+$60), $00
+
 _next:
     djnz _loop
 
@@ -333,7 +342,7 @@ _loop:
     and a
     jr nz, _collision
 
-    ; Next block.
+    ; Next block in the piece.
     djnz _loop
 
 _no_collision:
@@ -391,7 +400,7 @@ _loop:
     dec hl
     add a, (hl)
 
-    ;
+    ; Mark the playfield cell as occupied.
     exx
     ld d, 0
     ld e, a
@@ -400,7 +409,7 @@ _loop:
     ld (hl), 1
     exx
 
-    ; Next block.
+    ; Next block in the piece.
     djnz _loop
 
     ex af, af'
@@ -419,7 +428,7 @@ tetris_next_queue_shuffle:
     ld hl, tetris_next_queue
     ld b, 7
 _shuffle_loop:
-    ; Generate random number modulo B.
+    ; Generate a random number modulo B.
     call random_generate
 _modulo_loop:
     sub b
@@ -439,10 +448,13 @@ _modulo_loop:
     pop hl
     ld (hl), e
 
-    inc hl
+    ; For the next call to random_generate.
     ld a, 1
+
+    inc hl
     djnz _shuffle_loop
 
+    ; Reset the queue index.
     ld a, 0
     ld (tetris_next_queue_index), a
 
@@ -494,8 +506,9 @@ tetris_active_next:
 ;
 ;   Try to shift the current piece.
 ;
-;   Inputs    : B   Row shift
-;             : C   Column shift
+;   Inputs:
+;       B   Row shift.
+;       C   Column shift.
 ;
 tetris_active_shift:
     ; Load current position and add the shift to it.
@@ -925,6 +938,7 @@ _piece_count_skip:
     ld b, $03
     call video_draw_bcd
 
+_erase_active_piece:
     ; Erase the previous "next piece".
     ld hl, $111A
     ld a, (tetris_next_piece_old)
@@ -944,7 +958,10 @@ _piece_count_skip:
     ; Erase previous active piece (if needed).
     ld hl, tetris_active_piece_reset
     rr (hl)
-    jr c, _erase_piece_skip
+    jr c, _draw_active_piece
+
+    ; Compute the screen row and column of the previous active piece
+    ; position (that is expressed in playfield coordinates).
     ld de, (tetris_active_position_old)
     ld a, d
     neg
@@ -953,12 +970,18 @@ _piece_count_skip:
     ld a, e
     add a, $0D
     ld l, a
+
+    ; Erase the previous active piece.
     ld a, (tetris_active_piece_old)
     call tetris_piece_erase
 
-_erase_piece_skip:
-    ; Draw the active piece.
+_draw_active_piece:
+    ; Save the current active piece position for the next frame.
     ld de, (tetris_active_position)
+    ld (tetris_active_position_old), de
+
+    ; Compute the screen row and column of the current active piece
+    ; position (that is expressed in playfield coordinates).
     ld a, d
     neg
     add a, 25
@@ -966,14 +989,13 @@ _erase_piece_skip:
     ld a, e
     add a, $0D
     ld l, a
-    ld a, (tetris_active_piece)
-    call tetris_piece_draw
 
-    ;
+    ; Save the current active piece code for the next frame.
     ld a, (tetris_active_piece)
     ld (tetris_active_piece_old), a
-    ld de, (tetris_active_position)
-    ld (tetris_active_position_old), de
+
+    ; Draw the current active piece.
+    call tetris_piece_draw
 
     ; Reset VRAM address.
     ld a, (VRAM_BASE)
@@ -1166,8 +1188,9 @@ _game_loop:
     call tetris_update
     jr z, _game_loop
 
-    ;
+    ; Return A=1 from tetris_update means game over.
     cp 1
     call z, tetris_game_over
+
     jp _main_loop
 

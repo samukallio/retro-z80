@@ -275,7 +275,7 @@ _loop:
 ;
 ;   Draw a number (stored as BCD digits) into video memory
 ;   without leading zeroes, right-justified.
-;   
+;
 ;   Parameters:
 ;       B   Length of the number, in bytes.
 ;       DE  Pointer to number.
@@ -348,7 +348,7 @@ _draw_upper:
 ;
 ;   Draw a number (stored as BCD digits) into video memory
 ;   without leading zeroes, left-justified.
-;   
+;
 ;   Parameters:
 ;       B   Length of the number, in bytes.
 ;       DE  Pointer to number.

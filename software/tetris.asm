@@ -153,7 +153,7 @@ tetris_timer_table:
 
 ;
 ;   Draw a tetris piece.
-; 
+;
 ;   Inputs:
 ;       A   Piece code.
 ;       H   Piece Y (bounding box top row).
@@ -222,7 +222,7 @@ _next:
 
 ;
 ;   Erase a tetris piece.
-; 
+;
 ;   Inputs:
 ;       A   Piece code.
 ;       H   Piece Y (bounding box top row).
@@ -299,7 +299,7 @@ tetris_field_collide:
     ex af, af'
 
     ; Loop over the 4 blocks that make up the piece.
-    ld b, 4             
+    ld b, 4
 _loop:
     ; Compute A as the playfield row of the current block.  If A < 0, then
     ; the block is past the bottom wall, meaning we have a wall collision.
@@ -382,7 +382,7 @@ tetris_field_place:
     ex af, af'
 
     ; Loop over the 4 blocks that make up the piece.
-    ld b, 4             
+    ld b, 4
 _loop:
     ; Compute A as the playfield row of the current block.
     ld a, d

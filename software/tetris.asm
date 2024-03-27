@@ -6,8 +6,9 @@ TETRIS_RAM_BASE:                equ GAME_RAM_BASE
 org TETRIS_RAM_BASE
 
 ; Playfield.
-tetris_field_array:             ds 220  ; 22 rows of 10 columns each.
-tetris_field_clear_map:         ds 22
+tetris_field_array:             ds 230  ; 22 rows of 10 columns each.
+tetris_field_line_state:        ds 23   ;
+tetris_field_full_count:        ds 1    ;
 
 ; Miscellaneous.
 tetris_level:                   ds 1    ; Current level number.
@@ -31,6 +32,9 @@ tetris_active_fall_timer:       ds 1    ; Number of frames until piece moves dow
 tetris_next_piece_old:          ds 1    ; Previous frame piece code.
 tetris_queue:                   ds 7    ; Next 7 piece codes.
 tetris_queue_index:             ds 1    ; Current index into queue.
+
+;
+tetris_zero_data:               ds 256  ; Useful for LDIR memory clears.
 
 TETRIS_RAM_SIZE:                equ $ - TETRIS_RAM_BASE
 
@@ -649,44 +653,86 @@ _success:
     ret
 
 ;
-;   Clear completed rows.
+;   Scan the playfield for full rows and clear them.
+;   Also increments the line counter, score, and possibly level.
 ;
 tetris_field_clear:
-    ; Scan for full rows.
-    ld de, tetris_field_clear_map
-    ld hl, tetris_field_array
-    ld b, 20
+    ; Scan the playfield.
     ld c, 0
+    ld de, tetris_field_line_state
+    ld hl, tetris_field_array
 _scan_loop:
-    ld a, $FF
+    ld a, $00
+    ex af, af'
+    ld a, $01
 rept 10
     and (hl)
+    ex af, af'
+    or (hl)
+    ex af, af'
     inc hl
 endm
-    jr nz, _scan_next
-    ld a, b
-    neg
-    add a, 20
+    rlca
+    ld b, a
+    ex af, af'
+    or b
     ld (de), a
     inc de
+    rrca
+    jr nc, _scan_done
+    rrca
+    jr nc, _scan_loop
     inc c
-_scan_next:
-    djnz _scan_loop
+    jr _scan_loop
+_scan_done:
+    ld a, c
+    ld (tetris_field_full_count), a
+    ; If no full rows, exit.
+    or a
+    ret z
 
-    ; Compute number of cleared rows.  If zero, there's nothing more to do.
-    ld a, 20
-    sub c
-    jp z, _exit
+    ; Clear the playfield.
+    ld ix, tetris_field_line_state
+    ld de, tetris_field_array
+    ld hl, tetris_field_array
+_field_shift_loop:
+    ld a, (ix)
+    inc ix
+    ; Empty row?
+    rrca
+    jr nc, _field_shift_done
+    ; Non-full row?
+    rrca
+    jr nc, _field_shift_line
+    ; Full row.
+    ld bc, 10
+    add hl, bc
+    jr _field_shift_loop
+_field_shift_line:
+    ld bc, 10
+    ldir
+    jr _field_shift_loop
+_field_shift_done:
+    ld a, (tetris_field_full_count)
     ld b, a
+    add a, a
+    add a, a
+    add a, b
+    add a, a
+    ld b, 0
+    ld c, a
+    ld hl, tetris_zero_data
+    ldir
 
     ; Add number of cleared lines to the clear counter.
+    ld a, (tetris_field_full_count)
     ld h, 0
-    ld l, b
+    ld l, a
     ld de, tetris_lines_bcd
     call bcd_add
 
     ; Add score according to the number of lines cleared.
-    ld a, b
+    ld a, (tetris_field_full_count)
     dec a
     add a, a
     ld d, 0
@@ -712,10 +758,10 @@ _score_loop:
     ld de, tetris_lines_to_next_level
     ld a, (de)
     sub b
-    jr c, _increment_level
-    jr z, _increment_level
-    jr _after_increment_level
-_increment_level:
+    jr c, _level_increment
+    jr z, _level_increment
+    jr _level_done
+_level_increment:
     add a, 10
     ld hl, tetris_level
     inc (hl)
@@ -724,52 +770,65 @@ _increment_level:
     ld hl, 1
     call bcd_add
     pop de
-_after_increment_level:
+_level_done:
     ld (de), a
 
-    ; Clear rows in the playfield.
-    ld ix, tetris_field_clear_map
-    ld de, tetris_field_array
-    ld b, c
-_field_loop:
-    ld a, (ix)
-    inc ix
-    push bc
-    ld b, 0
-    ld c, a
-    add a, a
-    add a, a
-    add a, c
-    add a, a
-    ld c, a
-    ld hl, tetris_field_array
-    add hl, bc
-    ld c, 10
-    ldir
-    pop bc
-    djnz _field_loop
-
-    ; 
+    ; Animate full lines being wiped out.
     ld a, (VRAM_BASE)
     call video_vsync
+    ld c, 5
+_wipe_frame:
+    ld h, 26
+    ld de, tetris_field_line_state
+_wipe_line:
+    dec h
+    ld a, (de)
+    inc de
+    rrca
+    jr nc, _wipe_frame_done
+    rrca
+    jr nc, _wipe_line
+    ld a, 12
+    add a, c
+    ld l, a
+    ld a, ' '
+    call video_draw_character
+    ld a, 23
+    sub c
+    ld l, a
+    ld a, ' '
+    call video_draw_character
+    jr _wipe_line
+_wipe_frame_done:
+    ld a, (VRAM_BASE)
+    call video_vsync
+    call video_vsync
+    call video_vsync
+    dec c
+    jr nz, _wipe_frame
 
-    ; Clear rows in VRAM.
-    ld ix, tetris_field_clear_map
+    ; Add some delay.
+    call video_vsync
+    call video_vsync
+    call video_vsync
+    call video_vsync
+    call video_vsync
+    call video_vsync
+
+    ; Move the blocks down.
+    ld ix, tetris_field_line_state
     ld de, VRAM_BASE + $19ED
-    ld b, c
-_vram_loop:
+    ld hl, VRAM_BASE + $19ED
+_vram_shift_loop:
     ld a, (ix)
     inc ix
-
-    push bc
-
-    neg
-    add a, 25
-    ld h, a
-    ld l, $ED
-    ld bc, VRAM_BASE
-    add hl, bc
-
+    rrca
+    jr nc, _vram_shift_clear
+    rrca
+    jr nc, _vram_shift_line
+    dec h
+    jr _vram_shift_loop
+_vram_shift_line:
 rept 8
     ld bc, 10
     ldir
@@ -779,18 +838,24 @@ rept 8
     add hl, bc
     ex de, hl
 endm
+    jr _vram_shift_loop
+_vram_shift_clear:
+    ld a, h
+    cp d
+    jr z, _vram_shift_done
+rept 8
+    ld bc, 10
+    ldir
+    ld bc, $FFF6
+    add hl, bc
+    ex de, hl
+    ld bc, $FFD6
+    add hl, bc
+    ex de, hl
+endm
+    jr _vram_shift_clear
+_vram_shift_done:
 
-
-    pop bc
-
-    ; Wait    
-    ld a, (VRAM_BASE)
-    call video_vsync
-
-    djnz _vram_loop
-
-
-_exit:
     ret
 
 ;

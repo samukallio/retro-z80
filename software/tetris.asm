@@ -1191,6 +1191,7 @@ _clear_loop:
     pop bc
     pop hl
     inc h
+    ld a, (VRAM_BASE)
     djnz _clear_loop
 
     ; Display game over menu.
@@ -1208,6 +1209,7 @@ _clear_loop:
     call video_draw_text
 
 _select_loop:
+    ld a, (VRAM_BASE)
     call video_vsync
     ld a, (tetris_restart_choice)
     add a, $11
@@ -1242,6 +1244,7 @@ _select_keep:
     jr _select_loop
 
 _exit:
+    ld a, (VRAM_BASE)
     ret
 
 ;

@@ -250,9 +250,10 @@ int main()
 		SDL_LockSurface(surface);
 		u32* pixels = (u32*)surface->pixels;
 		for (i32 y = 0; y < 1024; y++) {
-			u8* vram_line = m->vram + (y >> 2) * 32;
 			for (i32 x = 0; x < 32; x++) {
-				u8 vram_byte = vram_line[x];
+				i32 vram_offset = (y >> 2) * 32 + x;
+				i32 vram_address = (m->vram_address + vram_offset) & 0x1FFF;
+				u8 vram_byte = m->vram[vram_address];
 				for (i32 b = 0; b < 8; b++) {
 					u32 color = ((vram_byte >> b) & 1) ? 0xFFFFFFFF : 0x00000000;
 					*pixels++ = color;

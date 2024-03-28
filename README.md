@@ -2,6 +2,8 @@
 
 A Z80 single-board computer / game console, including hardware schematics, software, and an emulator.
 
+![Breadboard](https://github.com/samukallio/retro-z80/blob/main/media/board.jpg?raw=true)
+
 ## Features
 
 * Z80 CPU @ 8 MHz

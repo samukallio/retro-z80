@@ -70,10 +70,24 @@ For writes, the CPU asserts `/WR` during T-state 2. This causes `/VRAMWE` and `/
 
 The arbitration logic makes it safe for the CPU access the VRAM even while the VRAM is being scanned out during the visible portion of the frame. In this case, the CPU access overrides the scanning, and the VRAM address increment logic is suppressed. Once the CPU access is complete, the VRAM will continue being scanned out, starting from the address of the previous access.
 
-### Video output logic
+### VRAM scan logic
 
 The PLD receives the `/VIDEO` signal from the video timing circuit. This signal is active for exactly 256 clock cycles on each visible scanline (of which there are 256 per frame). While this signal is active, the VRAM control logic reads out the contents of the VRAM to output pixels to the monitor.
 
 Each byte in VRAM corresponds to a row of 8 pixels. When `/VIDEO` is active, the VRAM control logic drives `/VRAMOE` low every 8 clock cycles to read the next 8 pixels from VRAM. After this, the VRAM address counter is incremented. To keep count of these 8 clock cycles, the PLD receives bits 0 to 2 from the ripple counter of the video timing generator. The ripple propagation delay for these lower bits is low enough to fit within the 125ns clock cycle.
 
 Note that the VRAM address counter is never reset. Instead, the VRAM address counter ends up exactly where it started from after scanning out a single frame. It is possible for the CPU to control the starting VRAM address of the frame by (for example) performing a dummy read from a VRAM location during the vertical blanking period. This enables a crude form of hardware-accelerated scrolling.
+
+## Video Signal Generator
+
+The `/SYNC` signal from the video timing logic, and the pixel data from the VRAM, are combined to form a monochrome PAL video signal.
+
+### Design
+
+The design consists of a 74HC165 parallel-load shift register, a 74HC27 three triple-input NOR gates (for glue logic), a resistive voltage divider and adder, and an an output amplifier. Every 8 clock cycles, 8 bits (corresponding to 8 pixels) from VRAM are loaded into the shift register, and shifted out one bit at a time. The `/SYNC` signal, and the serial output of the shift register, are fed into a resistive voltage divider and adder network that generates the correct PAL output voltages: 0V for sync, 0.3V for black, and 1V for white. This signal is fed to an output amplifier with an output impedance of roughly 75&Omega;.
+
+### Pixel shift register
+
+The shift register runs off the video clock. It is loaded every time the VRAM outputs a byte while `/VIDEO` is active. When `/VIDEO` is not active, the register will shift low bits from the serial inputs to produce a low output. This is important, because in order to produce a correct sync pulse level, the output of the shift register must be low when `/SYNC` is asserted. It is not sufficient to simply load the shift register whenever the VRAM outputs a byte, since then it might be loaded when the CPU reads from VRAM during the vertical blank period, causing the shift register output to disrupt the synchronization pulses.
+
+The active-low load enable input of the shift register is generated using the 74HC27 as glue logic, combining `/VRAMOE`, `/VIDEO` and `CLK` (the video clock). The clock signal is included, because the load enable input is asynchronous on the 74HC165, and enabling it for a whole clock period would cause the register to ignore one clock pulse, duplicating the first pixel of a group of 8, and losing the last one. A better solution would probably be to use a 74HC166, which has a synchronous load function, but I did not have any at hand when building the prototype.

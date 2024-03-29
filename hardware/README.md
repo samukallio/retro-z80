@@ -2,7 +2,6 @@
 
 <p align=center>
   <img src="https://github.com/samukallio/retro-z80/blob/main/media/block-diagram.png?raw=true">
-  Figure 1: High-level hardware block diagram.
 </p>
 
 ## Core System
@@ -68,7 +67,7 @@ For reads, the CPU asserts `/RD` simultaneously with `/MREQ` (during T-state 1).
 
 For writes, the CPU asserts `/WR` during T-state 2. This causes `/VRAMWE` and `/DATAOE` to go active one cycle after the address is driven onto the VRAM address bus (start of T-state 3). This state remains active until the CPU de-asserts `/MREQ` and `/WR`, and the PLD is clocked, which happens at the end of CPU T-state 3.
 
-The arbitration logic makes it safe for the CPU access the VRAM even while the VRAM is being scanned out during the visible portion of the frame. In this case, the CPU access overrides the scanning, and the VRAM address increment logic is suppressed. Once the CPU access is complete, the VRAM will continue being scanned out, starting from the address of the previous access.
+The arbitration logic makes it safe for the CPU to access the VRAM even when the VRAM is being scanned out during the visible portion of the frame. The CPU access overrides the scanning logic, and the VRAM address increment is suppressed. Once the CPU access is complete, the VRAM will continue being scanned out, starting from the address of the previous access.
 
 ### VRAM scan logic
 

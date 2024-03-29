@@ -838,6 +838,8 @@ rept 8
     add hl, bc
     ex de, hl
 endm
+    ld a, (VRAM_BASE)
+    call video_vsync
     jr _vram_shift_loop
 _vram_shift_clear:
     ld a, h
@@ -856,6 +858,7 @@ endm
     jr _vram_shift_clear
 _vram_shift_done:
 
+    ld a, (VRAM_BASE)
     ret
 
 ;
@@ -913,6 +916,8 @@ _piece_count_dirty_loop:
     ld hl, $050C
     ld de, $140A
     call video_draw_frame
+    ld a, (VRAM_BASE)
+    call video_vsync
     ld hl, $0619
     ld de, tetris_text_level
     call video_draw_text
@@ -928,6 +933,8 @@ _piece_count_dirty_loop:
     ld hl, $0601
     ld de, tetris_text_statistics
     call video_draw_text
+    ld a, (VRAM_BASE)
+    call video_vsync
 
     ; Draw the pieces shown in the statistics panel.
     ld a, 0
@@ -945,6 +952,7 @@ _piece_count_loop:
     cp $38
     jr nz, _piece_count_loop
 
+    ld a, (VRAM_BASE)
     ret
 
 ;

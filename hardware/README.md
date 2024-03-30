@@ -24,6 +24,10 @@ The address decoder is enabled by `/MREQ` and disabled by `/RFSH`. The `/RFSH` s
 
 The system has two 74HC574 octal D flip-flops (DFFs) acting as controller input ports. These are mapped to I/O ports `8*N` and `8*N+1` by feeding address lines A0, A1 and A2 to another 74HC138 3-to-8 line decoder. This decoder controls the output enable (`/OE`) pins of the DFFs. The decoder is enabled when the CPU asserts both the `/IORQ` and `/RD` lines. There are currently no other I/O ports, and no I/O ports that can be output to.
 
+### Interrupts
+
+The `/NMI` input of the CPU is connected directly to the `/BLANK` output of the video timing circuit. This provides a non-maskable interrupt at the start of the vertical blanking interval of each frame. This is useful to synchronize CPU accesses to the VRAM so that all rendering happens during the vertical blanking interval. Maskable interrups are currently unused, and the `/IRQ` input of the CPU is tied high.
+
 ## Video Timing
 
 ### Keeping track of the raster position

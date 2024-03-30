@@ -4,11 +4,17 @@
   <img src="https://github.com/samukallio/retro-z80/blob/main/media/block-diagram.png?raw=true">
 </p>
 
-## Core System
+This document describes the hardware design of the machine in detail. Aside from the Z80 CPU, the design uses common 55ns SRAM and 150ns EEPROM memory chips, 74HCxx series chips for simple glue logic, and ATF22V10C-15PU programmable logics (PLDs) for more complex timing and control logic. The use of PLDs in particular makes the design relatively compact: the breadboard prototype fits on four 63-row solderless breadboards. The ATF22V10 is compatible with the (discontinued) Lattice GAL22V10 introduced in the 1980s. All of the chips used in the project are roughly contemporaneous, which was one of the design goals of the project.
 
-The core system is a basic Z80 design with ROM, RAM, and two 8-bit registers mapped to I/O ports.
+For schematics, see the KiCad project under `kicad/` or the SVG renders `z80.svg` and `z80-video.svg`. There is no PCB design at this point, as the prototype is still a work-in-progress. I would at least like to add a simple variable-frequency audio tone generator before transfering the design to a PCB.
 
-### Memory address decoding
+The logic functions performed by the PLDs are expressed in a programming language called CUPL (see the `.pld` files under `cupl/`). These logic description files are compiled into fuse maps (`.jed` files) using the WinCUPL tool, [available for free](https://www.microchip.com/en-us/development-tool/wincupl) from Microchip. The fuse maps are then programmed into an ATF22V10 similar to programming an EEPROM. Both commerical and open source programmers exist for these chips.
+
+## Base System
+
+The base system is a basic Z80 design with ROM, RAM, and two 8-bit registers mapped to I/O ports.
+
+### ROM, RAM, and memory address decoding
 
 A 74HC138 3-to-8 line decoder is used to decode address lines A13, A14 and A15, splitting the 64K address space into 8x8K segments. The first segment ($0000-$1FFF) is mapped to an 8K EEPROM (AT28C64B) and the second segment ($2000-$3FFF) is mapped to an 8K SRAM (AS6C6264). The third segment ($4000-$5FFF) is mapped to VRAM (or rather, the VRAM control circuitry, which arbitrates access to VRAM). The remaining segments ($6000-$FFFF) are unmapped.
 

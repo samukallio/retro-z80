@@ -160,7 +160,6 @@ main:
     jp tetris_main
 
 include "common.asm"
-include "video.asm"
 include "tetris.asm"
 
 if $ > PROGRAM_BASE + PROGRAM_SIZE

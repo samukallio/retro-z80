@@ -434,7 +434,7 @@ tetris_queue_shuffle:
     ld b, 7
 _shuffle_loop:
     ; Generate a random number modulo B.
-    call random_generate
+    call random
     call modulo
 
     ; Swap the element at (HL) with the element at (HL+A).
@@ -450,7 +450,7 @@ _shuffle_loop:
     pop hl
     ld (hl), e
 
-    ; For the next call to random_generate.
+    ; For the next call to random.
     ld a, 1
 
     inc hl
@@ -497,7 +497,7 @@ tetris_queue_activate_next:
     add hl, de
     ex de, hl
     ld hl, 1
-    call bcd_add
+    call add_bcd
 
     ; Shuffle the bag.
     ld a, (tetris_queue_index)
@@ -729,7 +729,7 @@ _field_shift_done:
     ld h, 0
     ld l, a
     ld de, tetris_lines_bcd
-    call bcd_add
+    call add_bcd
 
     ; Add score according to the number of lines cleared.
     ld a, (tetris_field_full_count)
@@ -748,7 +748,7 @@ _field_shift_done:
 _score_loop:
     push hl
     ld de, tetris_score_bcd
-    call bcd_add
+    call add_bcd
     pop hl
     dec a
     jr nz, _score_loop
@@ -768,14 +768,14 @@ _level_increment:
     push de
     ld de, tetris_level_bcd
     ld hl, 1
-    call bcd_add
+    call add_bcd
     pop de
 _level_done:
     ld (de), a
 
     ; Animate full lines being wiped out.
     ld a, (VRAM_BASE)
-    call video_vsync
+    call wait_for_vblank
     ld c, 5
 _wipe_frame:
     ld h, 26
@@ -792,28 +792,28 @@ _wipe_line:
     add a, c
     ld l, a
     ld a, ' '
-    call video_draw_character
+    call draw_character
     ld a, 23
     sub c
     ld l, a
     ld a, ' '
-    call video_draw_character
+    call draw_character
     jr _wipe_line
 _wipe_frame_done:
     ld a, (VRAM_BASE)
-    call video_vsync
-    call video_vsync
-    call video_vsync
+    call wait_for_vblank
+    call wait_for_vblank
+    call wait_for_vblank
     dec c
     jr nz, _wipe_frame
 
     ; Add some delay.
-    call video_vsync
-    call video_vsync
-    call video_vsync
-    call video_vsync
-    call video_vsync
-    call video_vsync
+    call wait_for_vblank
+    call wait_for_vblank
+    call wait_for_vblank
+    call wait_for_vblank
+    call wait_for_vblank
+    call wait_for_vblank
 
     ; Move the blocks down.
     ld ix, tetris_field_line_state
@@ -839,7 +839,7 @@ rept 8
     ex de, hl
 endm
     ld a, (VRAM_BASE)
-    call video_vsync
+    call wait_for_vblank
     jr _vram_shift_loop
 _vram_shift_clear:
     ld a, h
@@ -865,7 +865,7 @@ _vram_shift_done:
 ;   Initialize all state.
 ;
 tetris_initialize:
-    call video_clear
+    call clear_screen
 
     ; Clear RAM.
     ld bc, TETRIS_RAM_SIZE - 1
@@ -879,7 +879,7 @@ tetris_initialize:
     ld (tetris_lines_to_next_level), a
 
     ;
-    call random_initialize
+    call initialize_random
 
     ;
     ld ix, tetris_queue
@@ -910,31 +910,31 @@ _piece_count_dirty_loop:
     djnz _piece_count_dirty_loop
 
     ; Wait for vertical blank to begin drawing.
-    call video_vsync
+    call wait_for_vblank
 
     ; Draw some static elements.
     ld hl, $050C
     ld de, $140A
-    call video_draw_frame
+    call draw_rounded_rectangle
     ld a, (VRAM_BASE)
-    call video_vsync
+    call wait_for_vblank
     ld hl, $0619
     ld de, tetris_text_level
-    call video_draw_text
+    call draw_text
     ld hl, $0919
     ld de, tetris_text_lines
-    call video_draw_text
+    call draw_text
     ld hl, $0C19
     ld de, tetris_text_score
-    call video_draw_text
+    call draw_text
     ld hl, $0F19
     ld de, tetris_text_next
-    call video_draw_text
+    call draw_text
     ld hl, $0601
     ld de, tetris_text_statistics
-    call video_draw_text
+    call draw_text
     ld a, (VRAM_BASE)
-    call video_vsync
+    call wait_for_vblank
 
     ; Draw the pieces shown in the statistics panel.
     ld a, 0
@@ -960,7 +960,7 @@ _piece_count_loop:
 ;
 tetris_render:
     ; Wait for vertical blank to begin drawing.
-    call video_vsync
+    call wait_for_vblank
 
     ; Draw piece statistics.
     ld a, 0
@@ -989,7 +989,7 @@ _piece_count_loop:
     ld l, $01
     ; Draw the number, up to 4 digits, no leading zeroes.
     ld b, $02
-    call video_draw_bcd_right
+    call draw_number_right
 _piece_count_skip:
     ex af, af'
     inc a
@@ -1000,19 +1000,19 @@ _piece_count_skip:
     ld hl, $0719
     ld de, tetris_level_bcd
     ld b, $02
-    call video_draw_bcd_left
+    call draw_number_left
 
     ; Draw line count.
     ld hl, $0A19
     ld de, tetris_lines_bcd
     ld b, $03
-    call video_draw_bcd_left
+    call draw_number_left
 
     ; Draw score.
     ld hl, $0D19
     ld de, tetris_score_bcd
     ld b, $03
-    call video_draw_bcd
+    call draw_number
 
 _erase_active_piece:
     ; Erase the previous "next piece".
@@ -1111,7 +1111,7 @@ _reset_timer:
 
 _input:
     ; Read controller input.
-    call input_update
+    call read_input
 
     ; Edge triggered inputs.
     ld a, (input_pressed)
@@ -1144,7 +1144,7 @@ _shift_right:
 _shift_down:
     ld hl, $0001
     ld de, tetris_score_bcd
-    call bcd_add
+    call add_bcd
     ld bc, $FF00
     call tetris_active_shift
     jr c, _freeze
@@ -1190,12 +1190,12 @@ tetris_game_over:
     ld b, 20
     ld hl, $060D
 _clear_loop:
-    call video_vsync
-    call video_vsync
+    call wait_for_vblank
+    call wait_for_vblank
     push hl
     push bc
     ld de, tetris_text_empty_line
-    call video_draw_text
+    call draw_text
     pop bc
     pop hl
     inc h
@@ -1205,27 +1205,27 @@ _clear_loop:
     ; Display game over menu.
     ld hl, $0D0D
     ld de, tetris_text_game_over
-    call video_draw_text
+    call draw_text
     ld hl, $0F0E
     ld de, tetris_text_restart
-    call video_draw_text
+    call draw_text
     ld hl, $1110
     ld de, tetris_text_yes
-    call video_draw_text
+    call draw_text
     ld hl, $1210
     ld de, tetris_text_no
-    call video_draw_text
+    call draw_text
 
 _select_loop:
     ld a, (VRAM_BASE)
-    call video_vsync
+    call wait_for_vblank
     ld a, (tetris_restart_choice)
     add a, $11
     ld h, a
     ld l, $0E
     ld a, ' '
-    call video_draw_character
-    call input_update
+    call draw_character
+    call read_input
     ld a, (input_pressed)
     bit 2, a
     jr nz, _select_yes
@@ -1248,7 +1248,7 @@ _select_keep:
     ld h, a
     ld l, $0E
     ld a, '>'
-    call video_draw_character
+    call draw_character
     jr _select_loop
 
 _exit:

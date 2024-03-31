@@ -57,7 +57,7 @@ _subtract:
 ;   Destroys:
 ;       DE, H
 ;
-bcd_add:
+add_bcd:
     ex af, af'
 
     ; Add to first two digits.
@@ -84,7 +84,7 @@ _loop:
 ;
 ;   Handle input update.
 ;
-input_update:
+read_input:
     ld hl, input_state
     ld b, (hl)
     ld a, 0
@@ -107,7 +107,7 @@ input_update:
 ;
 ;   Initialize the random number generator.
 ;
-random_initialize:
+initialize_random:
     exx
     ld de, $F1EE
     ld hl, $EEEE
@@ -125,7 +125,7 @@ random_initialize:
 ;   Outputs:
 ;       A   Generated number.
 ;
-random_generate:
+random:
     exx
     ld b, a
     ld de, (random_state+0)
@@ -166,7 +166,7 @@ _loop:
 ;
 ;   Wait for the next vertical blanking interval.
 ;
-video_vsync:
+wait_for_vblank:
     halt
     ret
 
@@ -176,7 +176,7 @@ video_vsync:
 ;   Destroys:
 ;       AF, BC, DE, HL
 ;
-video_clear:
+clear_screen:
     ; Clear the screen one half at a time.
     ld hl, VRAM_BASE
     ld c, 2
@@ -184,7 +184,7 @@ video_clear:
 _outer:
     ; Synchronize to be sure that a vertical blank NMI does not
     ; occur while we are using the stack pointer to clear VRAM.
-    call video_vsync
+    call wait_for_vblank
 
     ; Clear half of the screen.
     ld (sp_stash), sp
@@ -226,7 +226,7 @@ _inner:
 ;   Destroys:
 ;       A, BC, DE, HL, IX
 ;
-video_draw_frame:
+draw_rounded_rectangle:
     ld c, d
     ld b, e
 
@@ -239,31 +239,31 @@ video_draw_frame:
 
     ; Draw top left and bottom right corners.
     ld a, $06
-    call video_draw_character
+    call draw_character
     ex de, hl
     ld a, $03
-    call video_draw_character
+    call draw_character
     ex de, hl
 
     ; Draw top and bottom horizontal lines.
     ld a, $01
 _hloop:
     dec l
-    call video_draw_character
+    call draw_character
     ex de, hl
     inc l
-    call video_draw_character
+    call draw_character
     ex de, hl
     djnz _hloop
 
     ; Draw top right and bottom left corners.
     dec l
     ld a, $05
-    call video_draw_character
+    call draw_character
     ex de, hl
     inc l
     ld a, $04
-    call video_draw_character
+    call draw_character
     ex de, hl
 
     ; Draw left and right vertical lines.
@@ -271,10 +271,10 @@ _hloop:
     ld a, $02
 _vloop:
     dec h
-    call video_draw_character
+    call draw_character
     ex de, hl
     inc h
-    call video_draw_character
+    call draw_character
     ex de, hl
     djnz _vloop
 
@@ -291,7 +291,7 @@ _vloop:
 ;   Destroys:
 ;       IX
 ;
-video_draw_character:
+draw_character:
     ; This is a leaf routine. Use the shadow register set to reduce clobbering.
     push hl
     exx
@@ -346,7 +346,7 @@ video_draw_character:
 ;   Destroys:
 ;       AF, BC, DE, HL
 ;
-video_draw_text:
+draw_text:
     ; IX = VRAM address of the 4th row of the first character.
     ; The 4th row is used, because this way we can reach the first
     ; and last rows using relative offsets (-128 to 127).
@@ -406,7 +406,7 @@ _done:
 ;   Destroys:
 ;       AF, B, DE, L, IX
 ;
-video_draw_bcd:
+draw_number:
     ; Move DE to one past the last byte of the number.
     ld a, b
     add a, e
@@ -424,14 +424,14 @@ _loop:
     rrca
     rrca
     add a, '0'
-    call video_draw_character
+    call draw_character
     inc l
 
     ; Load and draw lower digit.
     ld a, (de)
     and $0F
     add a, '0'
-    call video_draw_character
+    call draw_character
     inc l
 
     djnz _loop
@@ -450,7 +450,7 @@ _loop:
 ;   Destroys:
 ;       AF, BC, DE, L, IX
 ;
-video_draw_bcd_right:
+draw_number_right:
     ; Move DE to one past the last byte of the number.
     ld a, b
     add a, e
@@ -466,9 +466,9 @@ _skip_loop:
     or a
     jr nz, _skip_done
     ld a, ' '
-    call video_draw_character
+    call draw_character
     inc l
-    call video_draw_character
+    call draw_character
     inc l
     jr _skip_loop
 
@@ -479,7 +479,7 @@ _skip_done:
     jr nz, _draw_upper
 
     ld a, ' '
-    call video_draw_character
+    call draw_character
     inc l
 
     ; Load and draw lower digit from current byte.
@@ -488,7 +488,7 @@ _load_lower:
     and $0F
 _draw_lower:
     add a, '0'
-    call video_draw_character
+    call draw_character
     inc l
     dec b
     ret m
@@ -504,7 +504,7 @@ _draw_upper:
     rrca
     rrca
     add a, '0'
-    call video_draw_character
+    call draw_character
     inc l
     jr _load_lower
 
@@ -523,7 +523,7 @@ _draw_upper:
 ;   Destroys:
 ;       AF, BC, DE, L, IX
 ;
-video_draw_bcd_left:
+draw_number_left:
     ; Move DE to one past the last byte of the number.
     ld a, b
     add a, e
@@ -560,7 +560,7 @@ _load_lower:
     and $0F
 _draw_lower:
     add a, '0'
-    call video_draw_character
+    call draw_character
     inc l
     dec b
     jp m, _load_space
@@ -576,7 +576,7 @@ _draw_upper:
     rrca
     rrca
     add a, '0'
-    call video_draw_character
+    call draw_character
     inc l
     jr _load_lower
 
@@ -585,7 +585,7 @@ _load_space:
     ld b, c
     ld a, ' '
 _draw_space:
-    call video_draw_character
+    call draw_character
     inc l
     djnz _draw_space
     ret

@@ -6,6 +6,15 @@ org COMMON_RAM_BASE
 
 sp_stash:               ds 2    ; Temporary storage for the stack pointer.
 
+r0:                     ds 2
+r1:                     ds 2
+r2:                     ds 2
+r3:                     ds 2
+r4:                     ds 2
+r5:                     ds 2
+r6:                     ds 2
+r7:                     ds 2
+
 nmi_handler_vector:     ds 2
 nmi_handler_enable:     ds 1
 

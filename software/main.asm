@@ -157,11 +157,12 @@ endif
 org PROGRAM_BASE
 
 main:
-    jp pong_main
+    jp twister_main
 
 include "common.asm"
 include "tetris.asm"
 include "pong.asm"
+include "twister.asm"
 
 if $ > PROGRAM_BASE + PROGRAM_SIZE
     .error "Maximum program size exceeded!"

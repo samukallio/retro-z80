@@ -755,6 +755,8 @@ _score_loop:
 
     ; Update the number of lines until next level, and increment
     ; the level if it becomes zero or less.
+    ld a, (tetris_field_full_count)
+    ld b, a
     ld de, tetris_lines_to_next_level
     ld a, (de)
     sub b

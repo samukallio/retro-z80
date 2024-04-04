@@ -1,6 +1,9 @@
 TWISTER_ROM_BASE:               equ $
 TWISTER_RAM_BASE:               equ GAME_RAM_BASE
 
+TWISTER_VRAM_BUFFER_HEIGHT:     equ 16
+TWISTER_VRAM_BUFFER_SIZE:       equ 32 * TWISTER_VRAM_BUFFER_HEIGHT
+
 ; --- RAM ---------------------------------------------------------------------
 
 org TWISTER_RAM_BASE
@@ -21,7 +24,7 @@ twister_x4:                     ds 1    ; X position of the fourth corner.
 ; Off-screen VRAM buffer.  This buffer is filled up by the code during
 ; the frame, and is then copied into VRAM during vertical blanking.
 twister_vram_cursor:            ds 2    ; Next VRAM destination address.
-twister_vram_buffer:            ds 512  ; Off-screen VRAM buffer.
+twister_vram_buffer:            ds TWISTER_VRAM_BUFFER_SIZE
 
 TWISTER_RAM_SIZE:               equ $ - PONG_RAM_BASE
 
@@ -218,7 +221,7 @@ twister_main:
     call clear_screen
     ld a, (VRAM_BASE)
 
-    ld de, VRAM_BASE + $1E00
+    ld de, VRAM_BASE
     ld (twister_vram_cursor), de
 
 _frame:
@@ -226,7 +229,7 @@ _frame:
     halt
     ld de, (twister_vram_cursor)
     ld hl, twister_vram_buffer
-    ld bc, 16*32
+    ld bc, TWISTER_VRAM_BUFFER_SIZE
     ldir
     ld a, d
     and $5F
@@ -240,7 +243,7 @@ _frame:
     ld e, l
     ld (hl), 0
     inc de
-    ld bc, 16*32-1
+    ld bc, TWISTER_VRAM_BUFFER_SIZE-1
     ldir
 
 
@@ -351,7 +354,7 @@ _set_angle:
 
     inc b
     ld a, b
-    cp 16
+    cp TWISTER_VRAM_BUFFER_HEIGHT
     jp nz, _loop
 
     jp _frame

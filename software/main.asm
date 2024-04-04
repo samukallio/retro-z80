@@ -157,7 +157,7 @@ endif
 org PROGRAM_BASE
 
 main:
-    jp twister_main
+    jp tetris_main
 
 include "common.asm"
 include "tetris.asm"

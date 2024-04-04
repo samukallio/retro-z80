@@ -33,6 +33,9 @@ tetris_next_piece_old:          ds 1    ; Previous frame piece code.
 tetris_queue:                   ds 7    ; Next 7 piece codes.
 tetris_queue_index:             ds 1    ; Current index into queue.
 
+; Uncompressed lookup tables.
+tetris_piece_table:             ds 256
+
 ;
 tetris_zero_data:               ds 256  ; Useful for LDIR memory clears.
 
@@ -58,43 +61,36 @@ tetris_text_restart:            defb "Restart?", 0
 tetris_text_yes:                defb "Yes", 0
 tetris_text_no:                 defb "No", 0
 
-tetris_piece_table:
-    ; Rotation 1
-    dw $0100, $0101, $0102, $0103 ; I
-    dw $0000, $0100, $0101, $0102 ; J
-    dw $0002, $0100, $0101, $0102 ; L
-    dw $0001, $0002, $0101, $0102 ; O
-    dw $0001, $0002, $0100, $0101 ; S
-    dw $0001, $0100, $0101, $0102 ; T
-    dw $0000, $0001, $0101, $0102 ; Z
-    dw $0000, $0000, $0000, $0000 ; -
-    ; Rotation 2
-    dw $0002, $0102, $0202, $0302 ; I
-    dw $0001, $0002, $0101, $0201 ; J
-    dw $0001, $0101, $0201, $0202 ; L
-    dw $0001, $0002, $0101, $0102 ; O
-    dw $0001, $0101, $0102, $0202 ; S
-    dw $0001, $0101, $0102, $0201 ; T
-    dw $0002, $0101, $0102, $0201 ; Z
-    dw $0000, $0000, $0000, $0000 ; -
-    ; Rotation 3
-    dw $0200, $0201, $0202, $0203 ; I
-    dw $0100, $0101, $0102, $0202 ; J
-    dw $0100, $0101, $0102, $0200 ; L
-    dw $0001, $0002, $0101, $0102 ; O
-    dw $0101, $0102, $0200, $0201 ; S
-    dw $0100, $0101, $0102, $0201 ; T
-    dw $0100, $0101, $0201, $0202 ; Z
-    dw $0000, $0000, $0000, $0000 ; -
-    ; Rotation 4
-    dw $0001, $0101, $0201, $0301 ; I
-    dw $0001, $0101, $0200, $0201 ; J
-    dw $0000, $0001, $0101, $0201 ; L
-    dw $0001, $0002, $0101, $0102 ; O
-    dw $0000, $0100, $0101, $0201 ; S
-    dw $0001, $0100, $0101, $0201 ; T
-    dw $0001, $0100, $0101, $0200 ; Z
-    dw $0000, $0000, $0000, $0000 ; -
+;
+; This table describes each tetromino in each of the 4 possible rotations.
+; For each rotation and piece, it stores the X/Y offsets of the 4 blocks
+; of the tetromino relative to the top left corner of a 4x4 bounding box.
+; The data format is described by the pseudocode below.  The output runs
+; from the least significant bit to the most significant bit.  Note that
+; the two offset integer bits are stored in a flipped order, with the MSB
+; at a lower bit position than the LSB.  This is due to how the unpacking
+; code works.
+;
+;   for each rotation (1 to 4)
+;       for each piece (1 to 8, with 8 unused)
+;           for each block (1 to 4)
+;               store x_offset msb
+;               store x_offset lsb
+;               store y_offset msb
+;               store y_offset lsb
+;           end
+;       end
+;   end
+;
+tetris_piece_table_packed:
+    dw $B9A8, $9A80, $9A81, $9A12
+    dw $A812, $9A82, $9A20, $0000
+    dw $D591, $6A12, $56A2, $9A12
+    dw $59A2, $69A2, $69A1, $0000
+    dw $7564, $59A8, $49A8, $9A12
+    dw $649A, $69A8, $56A8, $0000
+    dw $E6A2, $64A2, $6A20, $9A12
+    dw $6A80, $6A82, $4A82, $0000
 
 tetris_wall_kick_table:
     ; Rotation 1 -> 2
@@ -875,6 +871,26 @@ tetris_initialize:
     ld hl, TETRIS_RAM_BASE
     ld (hl), 0
     ldir
+
+    ; Unpack piece table.
+    ld hl, tetris_piece_table_packed
+    ld de, tetris_piece_table
+    ld b, 0
+_piece_table_loop:
+    ld a, b
+    and $03
+    jr nz, _piece_table_store
+    ld c, (hl)
+    inc hl
+_piece_table_store:
+    xor a
+    rr c
+    rla
+    rr c
+    rla
+    ld (de), a
+    inc de
+    djnz _piece_table_loop
 
     ;
     ld a, 10

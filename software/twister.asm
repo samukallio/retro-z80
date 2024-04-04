@@ -252,11 +252,13 @@ _loop:
     ld (twister_counter2), hl
 
     ; Compute angle.
+    ld d, 0
     ld a, (twister_counter1+1)
     call twister_sin
     sra a
-    add a, 80
-    ld d, 0
+    jp p, _set_angle
+    ld d, $FF
+_set_angle:
     ld e, a
     ld hl, (twister_phi)
     add hl, de

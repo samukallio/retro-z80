@@ -29,6 +29,10 @@ input_released:         ds 1    ; Button release bitmask (1 = released).
 ; Random number generator state.
 random_state:           ds 4
 
+if $ > COMMON_RAM_BASE + COMMON_RAM_SIZE
+    .error "Common RAM size exceeded!"
+endif
+
 ; --- Program -----------------------------------------------------------------
 
 org COMMON_ROM_BASE

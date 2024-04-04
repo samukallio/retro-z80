@@ -4,8 +4,10 @@ COMMON_ROM_BASE:      	equ $
 
 org COMMON_RAM_BASE
 
-sp_stash:               ds 2    ; Temporary storage for the stack pointer.
+; Temporary storage for the stack pointer.
+sp_stash:               ds 2
 
+; Temporary storage, for spilling registers into RAM.
 r0:                     ds 2
 r1:                     ds 2
 r2:                     ds 2
@@ -15,14 +17,17 @@ r5:                     ds 2
 r6:                     ds 2
 r7:                     ds 2
 
+; Custom NMI handler.
 nmi_handler_vector:     ds 2
 nmi_handler_enable:     ds 1
 
+; Controller state.
 input_state:            ds 1    ; Button state bitmask (1 = down).
 input_pressed:          ds 1    ; Button press bitmask (1 = pressed).
 input_released:         ds 1    ; Button release bitmask (1 = released).
 
-random_state:           ds 4    ; Random number generator state.
+; Random number generator state.
+random_state:           ds 4
 
 ; --- Program -----------------------------------------------------------------
 

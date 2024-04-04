@@ -5,19 +5,23 @@ TWISTER_RAM_BASE:               equ GAME_RAM_BASE
 
 org TWISTER_RAM_BASE
 
+; Counters that drive the animation.
 twister_counter1:               ds 2
 twister_counter2:               ds 2
 
-twister_phi:                    ds 2
-twister_x:                      ds 1
-twister_y:                      ds 1
-twister_x1:                     ds 1
-twister_x2:                     ds 1
-twister_x3:                     ds 1
-twister_x4:                     ds 1
+; Parameters for drawing one line of the twisting column.
+twister_phi:                    ds 2    ; Angle of the column.
+twister_x:                      ds 1    ; X position of the center of the line.
+twister_y:                      ds 1    ; Y position of the line.
+twister_x1:                     ds 1    ; X position of the first corner.
+twister_x2:                     ds 1    ; X position of the second corner.
+twister_x3:                     ds 1    ; X position of the third corner.
+twister_x4:                     ds 1    ; X position of the fourth corner.
 
-twister_vram_cursor:            ds 2
-twister_vram_buffer:            ds 16*32
+; Off-screen VRAM buffer.  This buffer is filled up by the code during
+; the frame, and is then copied into VRAM during vertical blanking.
+twister_vram_cursor:            ds 2    ; Next VRAM destination address.
+twister_vram_buffer:            ds 512  ; Off-screen VRAM buffer.
 
 TWISTER_RAM_SIZE:               equ $ - PONG_RAM_BASE
 
@@ -29,6 +33,8 @@ endif
 
 org TWISTER_ROM_BASE
 
+; Sine lookup table using binary radians (0 to 255 == 0 to 2pi).  The result
+; is stored as a signed 8-bit integer with the range -127 to +127.
 twister_sin_lut:
     db $00, $03, $06, $09, $0C, $0F, $12, $15
     db $18, $1B, $1E, $21, $24, $27, $2A, $2D
@@ -205,6 +211,9 @@ _final:
 
     ret
 
+;
+;   Main program.
+;
 twister_main:
     call clear_screen
     ld a, (VRAM_BASE)

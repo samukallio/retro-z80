@@ -416,7 +416,7 @@ _loop:
 ;
 ;   Generate a new bag of 7 pieces.
 ;
-tetris_queue_shuffle:
+tetris_shuffle_queue:
     ; Inject some non-determinism to the first random number
     ; generation by using the refresh register.
     ld a, r
@@ -458,7 +458,7 @@ _shuffle_loop:
 ;
 ;   Pull the next piece from the queue and activate it.
 ;
-tetris_queue_activate_next:
+tetris_activate_piece_from_queue:
     ; 
     ld a, 1
     ld (tetris_active_piece_reset), a
@@ -495,7 +495,7 @@ tetris_queue_activate_next:
     ; Shuffle the bag.
     ld a, (tetris_queue_index)
     cp 7
-    call z, tetris_queue_shuffle
+    call z, tetris_shuffle_queue
     ret
 
 ;
@@ -505,7 +505,7 @@ tetris_queue_activate_next:
 ;       B   Row shift.
 ;       C   Column shift.
 ;
-tetris_active_shift:
+tetris_shift:
     ; Load current position and add the shift to it.
     ld de, (tetris_active_position)
     ld a, d
@@ -531,7 +531,7 @@ tetris_active_shift:
 ;   Inputs:
 ;       A   If 0, rotate clockwise, otherwise rotate counterclockwise.
 ;
-tetris_active_rotate:
+tetris_rotate:
     or a
     ld a, (tetris_active_piece)
     jr nz, _ccw
@@ -892,10 +892,10 @@ _wall_kick_ccw_table_loop:
     ld (ix+4), $20
     ld (ix+5), $28
     ld (ix+6), $30
-    call tetris_queue_shuffle
+    call tetris_shuffle_queue
 
     ; Activate piece.
-    call tetris_queue_activate_next
+    call tetris_activate_piece_from_queue
 
     ; Initialize movement timer.
     ld hl, tetris_timer_table
@@ -1107,7 +1107,7 @@ _reset_timer:
     ld hl, tetris_active_fall_timer
     ld (hl), b
     ld bc, $FF00
-    call tetris_active_shift
+    call tetris_shift
     jr c, _freeze
     jr _done
 
@@ -1135,12 +1135,12 @@ _input:
 
 _shift_left:
     ld bc, $00FF
-    call tetris_active_shift
+    call tetris_shift
     jr _done
 
 _shift_right:
     ld bc, $0001
-    call tetris_active_shift
+    call tetris_shift
     jr _done
 
 _shift_down:
@@ -1148,18 +1148,18 @@ _shift_down:
     ld de, tetris_score_bcd
     call add_bcd
     ld bc, $FF00
-    call tetris_active_shift
+    call tetris_shift
     jr c, _freeze
     jr _done
 
 _rotate_cw:
     ld a, 0
-    call tetris_active_rotate
+    call tetris_rotate
     jr _done
 
 _rotate_ccw:
     ld a, 1
-    call tetris_active_rotate
+    call tetris_rotate
     jr _done
 
 _freeze:
@@ -1175,7 +1175,7 @@ _freeze:
 
     ; Clear full rows.
     call tetris_field_clear
-    call tetris_queue_activate_next
+    call tetris_activate_piece_from_queue
 
 _done:
     xor a

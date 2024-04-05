@@ -38,9 +38,6 @@ tetris_piece_table:             ds 256
 tetris_wall_kick_cw_table:      ds 256
 tetris_wall_kick_ccw_table:     ds 256
 
-;
-tetris_zero_data:               ds 256  ; Useful for LDIR memory clears.
-
 TETRIS_RAM_SIZE:                equ $ - TETRIS_RAM_BASE
 
 if TETRIS_RAM_SIZE > GAME_RAM_SIZE
@@ -664,9 +661,13 @@ _field_shift_done:
     add a, a
     add a, b
     add a, a
+    dec a
     ld b, 0
     ld c, a
-    ld hl, tetris_zero_data
+    ld h, d
+    ld l, e
+    ld (hl), 0
+    inc de
     ldir
 
     ; Add number of cleared lines to the clear counter.

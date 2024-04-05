@@ -7,9 +7,9 @@ VRAM_BASE:              equ $4000
 
 ; Logical memory map.
 COMMON_RAM_BASE:        equ $2000   ; RAM for common functionality.
-COMMON_RAM_SIZE:        equ 1024
+COMMON_RAM_SIZE:        equ 512
 GAME_RAM_BASE:          equ $2400   ; RAM for the active game.
-GAME_RAM_SIZE:          equ 1024
+GAME_RAM_SIZE:          equ 1536
 STACK_BASE:             equ $3F00
 STACK_SIZE:             equ 256
 

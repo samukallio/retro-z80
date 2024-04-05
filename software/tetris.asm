@@ -33,8 +33,10 @@ tetris_next_piece_old:          ds 1    ; Previous frame piece code.
 tetris_queue:                   ds 7    ; Next 7 piece codes.
 tetris_queue_index:             ds 1    ; Current index into queue.
 
-; Uncompressed lookup tables.
+; Unpacked lookup tables.
 tetris_piece_table:             ds 256
+tetris_wall_kick_cw_table:      ds 256
+tetris_wall_kick_ccw_table:     ds 256
 
 ;
 tetris_zero_data:               ds 256  ; Useful for LDIR memory clears.
@@ -92,43 +94,38 @@ tetris_piece_table_packed:
     dw $E6A2, $64A2, $6A20, $9A12
     dw $6A80, $6A82, $4A82, $0000
 
-tetris_wall_kick_table:
-    ; Rotation 1 -> 2
-    dw $00FE, $0001, $FFFE, $0201 ; I
-    dw $00FF, $01FF, $FE00, $FEFF ; J
-    dw $00FF, $01FF, $FE00, $FEFF ; L
-    dw $0000, $0000, $0000, $0000 ; O
-    dw $00FF, $01FF, $FE00, $FEFF ; S
-    dw $00FF, $01FF, $FE00, $FEFF ; T
-    dw $00FF, $01FF, $FE00, $FEFF ; Z
-    dw $0000, $0000, $0000, $0000 ; -
-    ; Rotation 2 -> 3
-    dw $00FF, $0002, $02FF, $FF02 ; I
-    dw $0001, $FF01, $0200, $0201 ; J
-    dw $0001, $FF01, $0200, $0201 ; L
-    dw $0000, $0000, $0000, $0000 ; O
-    dw $0001, $FF01, $0200, $0201 ; S
-    dw $0001, $FF01, $0200, $0201 ; T
-    dw $0001, $FF01, $0200, $0201 ; Z
-    dw $0000, $0000, $0000, $0000 ; -
-    ; Rotation 3 -> 4
-    dw $0002, $00FF, $0102, $FEFF ; I
-    dw $0001, $0101, $FE00, $FE01 ; J
-    dw $0001, $0101, $FE00, $FE01 ; L
-    dw $0000, $0000, $0000, $0000 ; O
-    dw $0001, $0101, $FE00, $FE01 ; S
-    dw $0001, $0101, $FE00, $FE01 ; T
-    dw $0001, $0101, $FE00, $FE01 ; Z
-    dw $0000, $0000, $0000, $0000 ; -
-    ; Rotation 4 -> 1
-    dw $0001, $00FE, $FE01, $01FE ; I
-    dw $00FF, $FFFF, $0200, $02FF ; J
-    dw $00FF, $FFFF, $0200, $02FF ; L
-    dw $0000, $0000, $0000, $0000 ; O
-    dw $00FF, $FFFF, $0200, $02FF ; S
-    dw $00FF, $FFFF, $0200, $02FF ; T
-    dw $00FF, $FFFF, $0200, $02FF ; Z
-    dw $0000, $0000, $0000, $0000 ; -
+;
+; This table describes the wall kick offsets to try when a rotated piece
+; does not fit in its current position.  It contains 4 X/Y offsets (each
+; offset being 1 byte) per wall kick type, per rotation.   There are two
+; wall kick types: one for the I piece, and one for the J/L/S/T/Z pieces.
+; The data is for clockwise rotations; the data for counterclockwise
+; rotations is the same, except the sign of the offsets is the opposite.
+; The table is indexed by the target rotation, so if we are going from
+; orientation 3 to orientation 0 (the spawn orientation), then we use the
+; offsets from first table entry.  The pseudocode below describes the
+; table format.
+;
+;   for each rotation (3->0, 0->1, 1->2, 2->3)
+;       for each of the 4 X/Y offsets for the I-piece
+;           store X
+;           store Y
+;       end
+;       for each of the 4 X/Y offsets for the J/L/S/T/Z-pieces
+;           store X
+;           store Y
+;       end
+;   end
+;
+tetris_wall_kick_table_packed:
+    dw $0001, $00FE, $FE01, $01FE
+    dw $00FF, $FFFF, $0200, $02FF
+    dw $00FE, $0001, $FFFE, $0201
+    dw $00FF, $01FF, $FE00, $FEFF
+    dw $00FF, $0002, $02FF, $FF02
+    dw $0001, $FF01, $0200, $0201
+    dw $0002, $00FF, $0102, $FEFF
+    dw $0001, $0101, $FE00, $FE01
 
 tetris_block_table:
     dw $81BD, $A5A5, $BD81, $0000 ; I
@@ -531,24 +528,36 @@ tetris_active_shift:
 ;
 ;   Try to rotate the current piece clockwise.
 ;
-tetris_active_rotate_cw:
+;   Inputs:
+;       A   If 0, rotate clockwise, otherwise rotate counterclockwise.
+;
+tetris_active_rotate:
+    or a
+    ld a, (tetris_active_piece)
+    jr nz, _ccw
+
+_cw:
+    add a, $40
+    ld hl, tetris_wall_kick_cw_table
+    jr _try
+
+_ccw:
+    sub $40
+    ld hl, tetris_wall_kick_ccw_table
+
+_try:
     ; First, try to rotate the piece without any wall kick.
     ld de, (tetris_active_position)
-    ld a, (tetris_active_piece)
-    add a, $40
+    push hl
     call tetris_field_collide
+    pop hl
     jr nc, _success
 
     ; Save the rotated piece code.
+    ; Compute address of wall kick data into HL.
+    ld b, 0
     ld c, a
-
-    ; Compute address of wall kick data into HL.  For clockwise rotations,
-    ; the wall kick data is indexed by the original rotation of the piece.
-    sub $40
-    ld d, 0
-    ld e, a
-    ld hl, tetris_wall_kick_table
-    add hl, de
+    add hl, bc
 
     ; Try each of the 4 wall kick offsets.
     ld b, 4
@@ -563,66 +572,6 @@ _loop:
     ; Shift current piece row by wall kick offset.
     ld a, (tetris_active_position+1)
     add a, (hl)
-    ld d, a
-    inc hl
-
-    ; Restore rotated piece code.
-    ld a, c
-
-    ; Check for collision.
-    push hl
-    push bc
-    call tetris_field_collide
-    pop bc
-    pop hl
-    jr nc, _success
-
-    ; Next test.
-    djnz _loop
-
-    ; Every test failed.
-    ret
-
-_success:
-    ld (tetris_active_piece), a
-    ld (tetris_active_position), de
-    ret
-
-;
-;   Try to rotate the current piece counterclockwise.
-;
-tetris_active_rotate_ccw:
-    ; First, try to rotate the piece without any wall kick.
-    ld de, (tetris_active_position)
-    ld a, (tetris_active_piece)
-    sub $40
-    call tetris_field_collide
-    jr nc, _success
-
-    ; Save the rotated piece code.
-    ld c, a
-
-    ; Compute address of wall kick data into HL.  For counterclockwise
-    ; rotations, the wall kick data is indexed by the target rotation of
-    ; the piece, and with the sign of the row/column offsets inverted.
-    ld d, 0
-    ld e, a
-    ld hl, tetris_wall_kick_table
-    add hl, de
-
-    ; Try each of the 4 wall kick offsets.
-    ld b, 4
-
-_loop:
-    ; Shift current piece column by wall kick offset.
-    ld a, (tetris_active_position+0)
-    sub (hl)
-    ld e, a
-    inc hl
-
-    ; Shift current piece row by wall kick offset.
-    ld a, (tetris_active_position+1)
-    sub (hl)
     ld d, a
     inc hl
 
@@ -891,6 +840,41 @@ _piece_table_store:
     ld (de), a
     inc de
     djnz _piece_table_loop
+
+    ; Unpack clockwise wall kick table.
+    ld hl, tetris_wall_kick_table_packed
+    ld de, tetris_wall_kick_cw_table
+    ld b, 4
+_wall_kick_cw_table_loop:
+    push bc
+    ld bc, 16
+    ldir
+    push hl
+    ld h, d
+    ld l, e
+    ld bc, -8
+    add hl, bc
+    ld bc, 8*6
+    ldir
+    pop hl
+    pop bc
+    djnz _wall_kick_cw_table_loop
+
+    ; Derive the counterclockwise wall kick table.
+    ld hl, tetris_wall_kick_cw_table + 64
+    ld bc, 192
+    ldir
+    ld hl, tetris_wall_kick_cw_table
+    ld bc, 64
+    ldir
+    ld hl, tetris_wall_kick_ccw_table
+    ld b, 0
+_wall_kick_ccw_table_loop:
+    ld a, (hl)
+    neg
+    ld (hl), a
+    inc hl
+    djnz _wall_kick_ccw_table_loop
 
     ;
     ld a, 10
@@ -1169,11 +1153,13 @@ _shift_down:
     jr _done
 
 _rotate_cw:
-    call tetris_active_rotate_cw
+    ld a, 0
+    call tetris_active_rotate
     jr _done
 
 _rotate_ccw:
-    call tetris_active_rotate_ccw
+    ld a, 1
+    call tetris_active_rotate
     jr _done
 
 _freeze:

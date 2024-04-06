@@ -55,13 +55,14 @@ pong_paddle_sprite:
     db $00
 
 ;
-;   Draw ball on the screen.
+;   Draw a sprite on the screen.
 ;
 ;   Inputs:
-;       H   Y position of the ball.
-;       L   X position of the ball.
+;       H   Y position of the sprite.
+;       L   X position of the sprite.
+;       IX  Pointer to sprite data.
 ;
-pong_draw_ball:
+pong_draw_sprite:
     ld a, l
     and $07
     srl h
@@ -73,70 +74,6 @@ pong_draw_ball:
     ld de, VRAM_BASE
     add hl, de
     ex af, af'
-
-    ld ix, pong_ball_sprite
-
-    ;
-_line:
-    ld a, (ix)
-    or a
-    jr z, _exit
-    inc ix
-
-    ld d, a
-    ld e, 0
-
-    ; Shift the sprite row by the fine X amount.
-    ex af, af'
-    or a
-    jr z, _shift_done
-    ld b, a
-_shift:
-    sla d
-    rl e
-    djnz _shift
-_shift_done:
-    ex af, af'
-
-    ; Draw the sprite.
-_draw:
-    ld a, (hl)
-    xor d
-    ld (hl), a
-    inc hl
-    ld a, (hl)
-    xor e
-    ld (hl), a
-    ld de, 31
-    add hl, de
-
-    jr _line
-
-_exit:
-    ex af, af'
-    ret
-
-;
-;   Draw paddle on the screen.
-;
-;   Inputs:
-;       H   Y position of the paddle.
-;       L   X position of the paddle.
-;
-pong_draw_paddle:
-    ld a, l
-    and $07
-    srl h
-    rr l
-    srl h
-    rr l
-    srl h
-    rr l
-    ld de, VRAM_BASE
-    add hl, de
-    ex af, af'
-
-    ld ix, pong_paddle_sprite
 
     ;
 _line:
@@ -192,7 +129,8 @@ pong_render:
     ld h, a
     ld a, (pong_ball_sprite_x)
     ld l, a
-    call pong_draw_ball
+    ld ix, pong_ball_sprite
+    call pong_draw_sprite
 _draw_ball:
     ld a, (pong_ball_position_y+1)
     ld (pong_ball_sprite_y), a
@@ -200,7 +138,8 @@ _draw_ball:
     ld a, (pong_ball_position_x+1)
     ld (pong_ball_sprite_x), a
     ld l, a
-    call pong_draw_ball
+    ld ix, pong_ball_sprite
+    call pong_draw_sprite
 
     ; Draw the left paddle.
     ld hl, pong_paddle1_sprite_reset
@@ -210,7 +149,8 @@ _draw_ball:
     ld h, a
     ld a, (pong_paddle1_sprite_x)
     ld l, a
-    call pong_draw_paddle
+    ld ix, pong_paddle_sprite
+    call pong_draw_sprite
 _draw_paddle1:
     ld a, (pong_paddle1_position_y+1)
     ld (pong_paddle1_sprite_y), a
@@ -218,7 +158,8 @@ _draw_paddle1:
     ld a, 16
     ld (pong_paddle1_sprite_x), a
     ld l, a
-    call pong_draw_paddle
+    ld ix, pong_paddle_sprite
+    call pong_draw_sprite
 
     ; Draw the right paddle.
     ld hl, pong_paddle2_sprite_reset
@@ -228,7 +169,8 @@ _draw_paddle1:
     ld h, a
     ld a, (pong_paddle2_sprite_x)
     ld l, a
-    call pong_draw_paddle
+    ld ix, pong_paddle_sprite
+    call pong_draw_sprite
 _draw_paddle2:
     ld a, (pong_paddle2_position_y+1)
     ld (pong_paddle2_sprite_y), a
@@ -236,7 +178,8 @@ _draw_paddle2:
     ld a, 256-24
     ld (pong_paddle2_sprite_x), a
     ld l, a
-    call pong_draw_paddle
+    ld ix, pong_paddle_sprite
+    call pong_draw_sprite
 
 
     ld a, (VRAM_BASE)

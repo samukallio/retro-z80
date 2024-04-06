@@ -16,10 +16,22 @@ pong_ball_position_y:           ds 2
 pong_ball_velocity_x:           ds 2
 pong_ball_velocity_y:           ds 2
 
+; Paddle positions.
+pong_paddle1_position_y:        ds 2
+pong_paddle2_position_y:        ds 2
+
 ; Ball sprite state.
 pong_ball_sprite_reset:         ds 1
 pong_ball_sprite_x:             ds 1
 pong_ball_sprite_y:             ds 1
+
+; Paddle sprite state.
+pong_paddle1_sprite_reset:      ds 1
+pong_paddle1_sprite_x:          ds 1
+pong_paddle1_sprite_y:          ds 1
+pong_paddle2_sprite_reset:      ds 1
+pong_paddle2_sprite_x:          ds 1
+pong_paddle2_sprite_y:          ds 1
 
 PONG_RAM_SIZE:                	equ $ - PONG_RAM_BASE
 
@@ -32,7 +44,15 @@ endif
 org PONG_ROM_BASE
 
 pong_ball_sprite:
-    db $18, $3C, $7E, $FF, $FF, $7E, $3C, $18, $00
+    db $18, $3C, $7E, $FF, $FF, $7E, $3C, $18
+    db $00
+
+pong_paddle_sprite:
+    db $3C, $7E, $FF, $FF, $FF, $FF, $FF, $FF
+    db $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+    db $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+    db $FF, $FF, $FF, $FF, $FF, $FF, $7E, $3C
+    db $00
 
 ;
 ;   Draw ball on the screen.
@@ -97,24 +117,83 @@ _exit:
     ret
 
 ;
+;   Draw paddle on the screen.
+;
+;   Inputs:
+;       H   Y position of the paddle.
+;       L   X position of the paddle.
+;
+pong_draw_paddle:
+    ld a, l
+    and $07
+    srl h
+    rr l
+    srl h
+    rr l
+    srl h
+    rr l
+    ld de, VRAM_BASE
+    add hl, de
+    ex af, af'
+
+    ld ix, pong_paddle_sprite
+
+    ;
+_line:
+    ld a, (ix)
+    or a
+    jr z, _exit
+    inc ix
+
+    ld d, a
+    ld e, 0
+
+    ; Shift the sprite row by the fine X amount.
+    ex af, af'
+    or a
+    jr z, _shift_done
+    ld b, a
+_shift:
+    sla d
+    rl e
+    djnz _shift
+_shift_done:
+    ex af, af'
+
+    ; Draw the sprite.
+_draw:
+    ld a, (hl)
+    xor d
+    ld (hl), a
+    inc hl
+    ld a, (hl)
+    xor e
+    ld (hl), a
+    ld de, 31
+    add hl, de
+
+    jr _line
+
+_exit:
+    ex af, af'
+    ret
+
+;
 ;   Update video memory.
 ;
 pong_render:
     call wait_for_vblank
 
-    ;
+    ; Draw the ball.
     ld hl, pong_ball_sprite_reset
     srl (hl)
-    jr c, _draw
-
-    ; Erase the previous ball.
+    jr c, _draw_ball
     ld a, (pong_ball_sprite_y)
     ld h, a
     ld a, (pong_ball_sprite_x)
     ld l, a
     call pong_draw_ball
-
-_draw:
+_draw_ball:
     ld a, (pong_ball_position_y+1)
     ld (pong_ball_sprite_y), a
     ld h, a
@@ -122,6 +201,43 @@ _draw:
     ld (pong_ball_sprite_x), a
     ld l, a
     call pong_draw_ball
+
+    ; Draw the left paddle.
+    ld hl, pong_paddle1_sprite_reset
+    srl (hl)
+    jr c, _draw_paddle1
+    ld a, (pong_paddle1_sprite_y)
+    ld h, a
+    ld a, (pong_paddle1_sprite_x)
+    ld l, a
+    call pong_draw_paddle
+_draw_paddle1:
+    ld a, (pong_paddle1_position_y+1)
+    ld (pong_paddle1_sprite_y), a
+    ld h, a
+    ld a, 16
+    ld (pong_paddle1_sprite_x), a
+    ld l, a
+    call pong_draw_paddle
+
+    ; Draw the right paddle.
+    ld hl, pong_paddle2_sprite_reset
+    srl (hl)
+    jr c, _draw_paddle2
+    ld a, (pong_paddle2_sprite_y)
+    ld h, a
+    ld a, (pong_paddle2_sprite_x)
+    ld l, a
+    call pong_draw_paddle
+_draw_paddle2:
+    ld a, (pong_paddle2_position_y+1)
+    ld (pong_paddle2_sprite_y), a
+    ld h, a
+    ld a, 256-24
+    ld (pong_paddle2_sprite_x), a
+    ld l, a
+    call pong_draw_paddle
+
 
     ld a, (VRAM_BASE)
 
@@ -214,6 +330,16 @@ pong_initialize:
     ld (hl), 0
     ldir
 
+
+    ;
+    ld a, 1
+    ld (pong_paddle1_sprite_reset), a
+    ld (pong_paddle2_sprite_reset), a
+
+    ld de, 112*256
+    ld (pong_paddle1_position_y), de
+    ld (pong_paddle2_position_y), de
+
     ;
     ld a, 1
     ld (pong_ball_sprite_reset), a
@@ -221,7 +347,6 @@ pong_initialize:
     ld de, 50*256
     ld (pong_ball_position_x), de
     ld (pong_ball_position_y), de
-
     ld de, 768
     ld (pong_ball_velocity_x), de
     ld de, 256

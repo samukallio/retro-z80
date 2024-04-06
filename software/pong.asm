@@ -1,6 +1,11 @@
 PONG_ROM_BASE:                	equ $
 PONG_RAM_BASE:                	equ GAME_RAM_BASE
 
+PONG_MIN_X:                     equ 8
+PONG_MAX_X:                     equ 248
+PONG_MIN_Y:                     equ 32
+PONG_MAX_Y:                     equ 224
+
 ; --- RAM ---------------------------------------------------------------------
 
 org PONG_RAM_BASE
@@ -133,18 +138,23 @@ _move_x:
     add hl, de
     ex de, hl
     ld a, d
-    cp $08
-    jr c, _collide_x0
-    cp $F0
-    jr nc, _collide_x1
+    cp PONG_MIN_X
+    jr c, _collide_min_x
+    cp PONG_MAX_X - 8
+    jr nc, _collide_max_x
     jr _save_x
-_collide_x0:
-    ld hl, $1000
+_collide_min_x:
+    ; Calculate X' = MIN_X + (MIN_X - X) = 2*MIN_X - X.  Since the value
+    ; is 8.8 fixed point, we multiply by 256.  Also, SBC will subtract
+    ; the carry flag (which is set from the comparison that led us here),
+    ; so to counter that, we add 1.
+    ld hl, 2 * PONG_MIN_X * 256 + 1
     sbc hl, de
     ex de, hl
     jr _collide_x
-_collide_x1:
-    ld hl, $E000
+_collide_max_x:
+    ; Calculate X' = (MAX_X-8) - (X - (MAX_X-8)) = 2*(MAX_X-8) - X.
+    ld hl, 2 * (PONG_MAX_X - 8) * 256
     sbc hl, de
     ex de, hl
 _collide_x:
@@ -161,18 +171,23 @@ _move_y:
     add hl, de
     ex de, hl
     ld a, d
-    cp $08
-    jr c, _collide_y0
-    cp $F0
-    jr nc, _collide_y1
+    cp PONG_MIN_Y
+    jr c, _collide_min_y
+    cp PONG_MAX_Y - 8
+    jr nc, _collide_max_y
     jr _save_y
-_collide_y0:
-    ld hl, $1000
+_collide_min_y:
+    ; Calculate Y' = MIN_Y + (MIN_Y - Y) = 2*MIN_Y - Y.  Since the value
+    ; is 8.8 fixed point, we multiply by 256.  Also, SBC will subtract
+    ; the carry flag (which is set from the comparison that led us here),
+    ; so to counter that, we add 1.
+    ld hl, 2 * PONG_MIN_Y * 256 + 1
     sbc hl, de
     ex de, hl
     jr _collide_y
-_collide_y1:
-    ld hl, $E000
+_collide_max_y:
+    ; Calculate Y' = (MAX_Y-8) - (Y - (MAX_Y-8)) = 2*(MAX_Y-8) - Y.
+    ld hl, 2 * (PONG_MAX_Y - 8) * 256
     sbc hl, de
     ex de, hl
 _collide_y:
@@ -182,8 +197,6 @@ _collide_y:
     ld (pong_ball_velocity_y), hl
 _save_y:
     ld (pong_ball_position_y), de
-
-
 
     ret
 

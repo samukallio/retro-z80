@@ -1,10 +1,10 @@
 PONG_ROM_BASE:                	equ $
 PONG_RAM_BASE:                	equ GAME_RAM_BASE
 
-PONG_MIN_X:                     equ 8
-PONG_MAX_X:                     equ 248
-PONG_MIN_Y:                     equ 32
-PONG_MAX_Y:                     equ 224
+PONG_MIN_X:                     equ 5
+PONG_MAX_X:                     equ 256-5
+PONG_MIN_Y:                     equ 61
+PONG_MAX_Y:                     equ 256-61
 
 ; --- RAM ---------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ pong_draw_ball:
     rr l
     srl h
     rr l
-    ld de, VRAM_BASE + $0080
+    ld de, VRAM_BASE
     add hl, de
     ex af, af'
 
@@ -140,7 +140,7 @@ _move_x:
     ld a, d
     cp PONG_MIN_X
     jr c, _collide_min_x
-    cp PONG_MAX_X - 8
+    cp PONG_MAX_X - 9
     jr nc, _collide_max_x
     jr _save_x
 _collide_min_x:
@@ -173,7 +173,7 @@ _move_y:
     ld a, d
     cp PONG_MIN_Y
     jr c, _collide_min_y
-    cp PONG_MAX_Y - 8
+    cp PONG_MAX_Y - 9
     jr nc, _collide_max_y
     jr _save_y
 _collide_min_y:
@@ -202,6 +202,10 @@ _save_y:
 
 pong_initialize:
     call clear_screen
+
+    ld hl, $0700
+    ld de, $101E
+    call draw_rounded_rectangle
 
     ; Clear RAM.
     ld bc, TETRIS_RAM_SIZE - 1

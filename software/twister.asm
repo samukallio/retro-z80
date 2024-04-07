@@ -36,8 +36,10 @@ endif
 
 org TWISTER_ROM_BASE
 
-; Sine lookup table using binary radians (0 to 255 == 0 to 2pi).  The result
-; is stored as a signed 8-bit integer with the range -127 to +127.
+; Sine lookup table using binary angles (0 to 255 == 0 to 2pi).  We only need
+; to store the first 65 values (0 to 90 degrees, inclusive), as the rest are
+; easily obtained by symmetry.  The range is -127 to +127, stored as 8-bit
+; signed integers.
 twister_sin_lut:
     db $00, $03, $06, $09, $0C, $0F, $12, $15
     db $18, $1B, $1E, $21, $24, $27, $2A, $2D
@@ -47,30 +49,7 @@ twister_sin_lut:
     db $69, $6B, $6C, $6E, $70, $71, $72, $74
     db $75, $76, $77, $78, $79, $7A, $7B, $7B
     db $7C, $7D, $7D, $7E, $7E, $7E, $7E, $7E
-    db $7F, $7E, $7E, $7E, $7E, $7E, $7D, $7D
-    db $7C, $7B, $7B, $7A, $79, $78, $77, $76
-    db $75, $74, $72, $71, $70, $6E, $6C, $6B
-    db $69, $67, $66, $64, $62, $60, $5E, $5B
-    db $59, $57, $55, $52, $50, $4E, $4B, $49
-    db $46, $43, $41, $3E, $3B, $39, $36, $33
-    db $30, $2D, $2A, $27, $24, $21, $1E, $1B
-    db $18, $15, $12, $0F, $0C, $09, $06, $03
-    db $00, $FD, $FA, $F7, $F4, $F1, $EE, $EB
-    db $E8, $E5, $E2, $DF, $DC, $D9, $D6, $D3
-    db $D0, $CD, $CA, $C7, $C5, $C2, $BF, $BD
-    db $BA, $B7, $B5, $B2, $B0, $AE, $AB, $A9
-    db $A7, $A5, $A2, $A0, $9E, $9C, $9A, $99
-    db $97, $95, $94, $92, $90, $8F, $8E, $8C
-    db $8B, $8A, $89, $88, $87, $86, $85, $85
-    db $84, $83, $83, $82, $82, $82, $82, $82
-    db $81, $82, $82, $82, $82, $82, $83, $83
-    db $84, $85, $85, $86, $87, $88, $89, $8A
-    db $8B, $8C, $8E, $8F, $90, $92, $94, $95
-    db $97, $99, $9A, $9C, $9E, $A0, $A2, $A5
-    db $A7, $A9, $AB, $AE, $B0, $B2, $B5, $B7
-    db $BA, $BD, $BF, $C2, $C5, $C7, $CA, $CD
-    db $D0, $D3, $D6, $D9, $DC, $DF, $E2, $E5
-    db $E8, $EB, $EE, $F1, $F4, $F7, $FA, $FD
+    db $7F
 
 ;
 ;   Compute sine.
@@ -83,12 +62,28 @@ twister_sin_lut:
 ;
 twister_sin:
     exx
+    ; If the phase is 64-127 or 192-255, then let A = 128 - A,
+    ; which effectively reflects the phase about 64 (90 degrees).
+    bit 6, a
+    jr z, _lookup
+    cpl
+    add a, $81
+_lookup:
+    ; Save the phase A into B, and use the value in the lower 7 bits
+    ; of A (now in the range 0 to 64, inclusive) to lookup the sine
+    ; value.
+    ld b, a
+    and $7F
     ld d, 0
     ld e, a
     ld hl, twister_sin_lut
     add hl, de
     ld a, (hl)
+    ; Use the saved phase to see if we need to invert the sign.
+    bit 7, b
     exx
+    ret z
+    neg
     ret
 
 ;

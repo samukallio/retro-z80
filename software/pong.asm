@@ -5,6 +5,8 @@ PONG_MIN_X:                     equ 5
 PONG_MAX_X:                     equ 256-5
 PONG_MIN_Y:                     equ 61
 PONG_MAX_Y:                     equ 256-61
+PONG_PADDLE1_X:                 equ 24
+PONG_PADDLE2_X:                 equ 256-24
 
 ; --- RAM ---------------------------------------------------------------------
 
@@ -194,8 +196,6 @@ pong_update_ball:
     ; B = total number of ticks
     ; C = number of ticks to advance now
 
-    ld a, $FF
-
     ld b, 32
 _loop:
     ; Compute C = min(B, pong_ball_x_timer, pong_ball_y_timer).
@@ -212,12 +212,14 @@ _min1:
 _min2:
     ld c, a
 
-_update_x:
+    ; Store movement flags (bit 0 = X move, bit 1 = Y move)
+    ld e, 0
+_move_x:
     ; Update timer.
     ld a, (pong_ball_x_timer)
     sub c
     ld (pong_ball_x_timer), a
-    jr nz, _update_y
+    jr nz, _move_y
     ; Timer reached zero, reset timer.
     ld a, (pong_ball_x_delay)
     ld (pong_ball_x_timer), a
@@ -227,25 +229,13 @@ _update_x:
     ld a, (pong_ball_x)
     add a, d
     ld (pong_ball_x), a
-    ; Check for collision with the field edges.
-    cp PONG_MIN_X
-    jr z, _collide_x
-    cp PONG_MAX_X - 8
-    jr z, _collide_x
-    jr _update_y
-
-_collide_x:
-    ; Flip direction.
-    ld a, d
-    neg
-    ld (pong_ball_x_delta), a
-
-_update_y:
+    set 0, e
+_move_y:
     ; Update timer.
     ld a, (pong_ball_y_timer)
     sub c
     ld (pong_ball_y_timer), a
-    jr nz, _next
+    jr nz, _move_done
     ; Timer reached zero, reset timer.
     ld a, (pong_ball_y_delay)
     ld (pong_ball_y_timer), a
@@ -255,16 +245,56 @@ _update_y:
     ld a, (pong_ball_y)
     add a, d
     ld (pong_ball_y), a
-    ; Check for collision with the field edges.
-    cp PONG_MIN_Y
-    jr z, _collide_y
-    cp PONG_MAX_Y - 8
-    jr z, _collide_y
-    jr _next
+    set 1, e
+_move_done:
 
-_collide_y:
+_test_x:
+    bit 0, e
+    jr z, _test_y
+    ; Check for collision with the field edges.
+    ld a, (pong_ball_x)
+    ld hl, pong_paddle1_position_y+1
+    cp PONG_PADDLE1_X
+    jr z, _collide_paddle
+    ld hl, pong_paddle2_position_y+1
+    cp PONG_PADDLE2_X - 8
+    jr z, _collide_paddle
+    cp PONG_MIN_X
+    jr z, _bounce_x
+    cp PONG_MAX_X - 8
+    jr z, _bounce_x
+    jr _test_x_done
+_collide_paddle:
+    ld a, (pong_ball_y)
+    add a, 4
+    cp (hl)
+    jr c, _test_x_done
+    ld a, (pong_ball_y)
+    ld d, a
+    ld a, (hl)
+    add a, 28
+    cp d
+    jr c, _test_x_done
+_bounce_x:
     ; Flip direction.
-    ld a, d
+    ld a, (pong_ball_x_delta)
+    neg
+    ld (pong_ball_x_delta), a
+_test_x_done:
+
+_test_y:
+    bit 1, e
+    jr z, _next
+    ; Check for collision with the field edges.
+    ld a, (pong_ball_y)
+    cp PONG_MIN_Y
+    jr z, _bounce_y
+    cp PONG_MAX_Y - 8
+    jr z, _bounce_y
+    jr _next
+_bounce_y:
+    ; Flip direction.
+    ld a, (pong_ball_y_delta)
     neg
     ld (pong_ball_y_delta), a
 
@@ -272,7 +302,7 @@ _next:
     ld a, b
     sub c
     ld b, a
-    jr nz, _loop
+    jp nz, _loop
 
 _exit:
     ret
@@ -344,9 +374,9 @@ pong_initialize:
     ld a, 1
     ld (pong_ball_x_timer), a
     ld (pong_ball_y_timer), a
-    ld a, 8
+    ld a, 16
     ld (pong_ball_x_delay), a
-    ld a, 4
+    ld a, 16
     ld (pong_ball_y_delay), a
 
     ret

@@ -10,11 +10,16 @@ PONG_MAX_Y:                     equ 256-61
 
 org PONG_RAM_BASE
 
-; Ball position and velocity stored as 8.8 a fixed point value.
-pong_ball_position_x:           ds 2
-pong_ball_position_y:           ds 2
-pong_ball_velocity_x:           ds 2
-pong_ball_velocity_y:           ds 2
+; Ball position.
+pong_ball_x:                    ds 1
+pong_ball_x_delta:              ds 1
+pong_ball_x_delay:              ds 1
+pong_ball_x_timer:              ds 1
+
+pong_ball_y:                    ds 1
+pong_ball_y_delta:              ds 1
+pong_ball_y_delay:              ds 1
+pong_ball_y_timer:              ds 1
 
 ; Paddle positions.
 pong_paddle1_position_y:        ds 2
@@ -132,10 +137,10 @@ pong_render:
     ld ix, pong_ball_sprite
     call pong_draw_sprite
 _draw_ball:
-    ld a, (pong_ball_position_y+1)
+    ld a, (pong_ball_y)
     ld (pong_ball_sprite_y), a
     ld h, a
-    ld a, (pong_ball_position_x+1)
+    ld a, (pong_ball_x)
     ld (pong_ball_sprite_x), a
     ld l, a
     ld ix, pong_ball_sprite
@@ -186,76 +191,114 @@ _draw_paddle2:
 
     ret
 
-;
-;   Update the game.
-;
-pong_update:
+pong_update_ball:
+    ; B = total number of ticks
+    ; C = number of ticks to advance now
 
-_move_x:
-    ld hl, (pong_ball_position_x)
-    ld de, (pong_ball_velocity_x)
-    add hl, de
-    ex de, hl
-    ld a, d
+    ld a, $FF
+
+    ld b, 32
+_loop:
+    ; Compute the number of ticks to simulate.
+    ld a, (pong_ball_x_timer)
+    ld c, a
+    ld a, (pong_ball_y_timer)
+    cp c
+    jr c, _l1
+    ld a, c
+_l1:
+    cp b
+    jr c, _l2
+    ld a, b
+_l2:
+    ld c, a
+
+_do_x:
+    ld a, (pong_ball_x_timer)
+    sub c
+    ld (pong_ball_x_timer), a
+    jr nz, _do_y
+    ; do x
+
+    ld a, (pong_ball_x_delay)
+    ld (pong_ball_x_timer), a
+
+    ld a, (pong_ball_x_delta)
+    ld d, a
+    ld a, (pong_ball_x)
+    add a, d
+    ld (pong_ball_x), a
     cp PONG_MIN_X
-    jr c, _collide_min_x
-    cp PONG_MAX_X - 9
-    jr nc, _collide_max_x
-    jr _save_x
-_collide_min_x:
-    ; Calculate X' = MIN_X + (MIN_X - X) = 2*MIN_X - X.  Since the value
-    ; is 8.8 fixed point, we multiply by 256.  Also, SBC will subtract
-    ; the carry flag (which is set from the comparison that led us here),
-    ; so to counter that, we add 1.
-    ld hl, 2 * PONG_MIN_X * 256 + 1
-    sbc hl, de
-    ex de, hl
-    jr _collide_x
-_collide_max_x:
-    ; Calculate X' = (MAX_X-8) - (X - (MAX_X-8)) = 2*(MAX_X-8) - X.
-    ld hl, 2 * (PONG_MAX_X - 8) * 256
-    sbc hl, de
-    ex de, hl
-_collide_x:
-    ld hl, 0
-    ld bc, (pong_ball_velocity_x)
-    sbc hl, bc
-    ld (pong_ball_velocity_x), hl
-_save_x:
-    ld (pong_ball_position_x), de
+    jr z, _collide_x
+    cp PONG_MAX_X - 8
+    jr z, _collide_x
+    jr _do_y
 
-_move_y:
-    ld hl, (pong_ball_position_y)
-    ld de, (pong_ball_velocity_y)
-    add hl, de
-    ex de, hl
+_collide_x:
     ld a, d
+    neg
+    ld (pong_ball_x_delta), a
+
+_do_y:
+    ld a, (pong_ball_y_timer)
+    sub c
+    ld (pong_ball_y_timer), a
+    jr nz, _next
+    ; do y
+
+    ld a, (pong_ball_y_delay)
+    ld (pong_ball_y_timer), a
+
+    ld a, (pong_ball_y_delta)
+    ld d, a
+    ld a, (pong_ball_y)
+    add a, d
+    ld (pong_ball_y), a
     cp PONG_MIN_Y
-    jr c, _collide_min_y
-    cp PONG_MAX_Y - 9
-    jr nc, _collide_max_y
-    jr _save_y
-_collide_min_y:
-    ; Calculate Y' = MIN_Y + (MIN_Y - Y) = 2*MIN_Y - Y.  Since the value
-    ; is 8.8 fixed point, we multiply by 256.  Also, SBC will subtract
-    ; the carry flag (which is set from the comparison that led us here),
-    ; so to counter that, we add 1.
-    ld hl, 2 * PONG_MIN_Y * 256 + 1
-    sbc hl, de
-    ex de, hl
-    jr _collide_y
-_collide_max_y:
-    ; Calculate Y' = (MAX_Y-8) - (Y - (MAX_Y-8)) = 2*(MAX_Y-8) - Y.
-    ld hl, 2 * (PONG_MAX_Y - 8) * 256
-    sbc hl, de
-    ex de, hl
+    jr z, _collide_y
+    cp PONG_MAX_Y - 8
+    jr z, _collide_y
+    jr _next
+
 _collide_y:
-    ld hl, 0
-    ld bc, (pong_ball_velocity_y)
-    sbc hl, bc
-    ld (pong_ball_velocity_y), hl
-_save_y:
-    ld (pong_ball_position_y), de
+    ld a, d
+    neg
+    ld (pong_ball_y_delta), a
+
+_next:
+    ld a, b
+    sub c
+    ld b, a
+    jr nz, _loop
+
+_exit:
+    ret
+
+pong_update:
+    call read_input
+    ld a, (input_state)
+    bit 2, a
+    jr nz, _move_up
+    bit 3, a
+    jr nz, _move_down
+    jr _input_done
+
+_move_up:
+    ld hl, (pong_paddle1_position_y)
+    ld de, -256
+    add hl, de
+    ld (pong_paddle1_position_y), hl
+    jr _input_done
+
+_move_down:
+    ld hl, (pong_paddle1_position_y)
+    ld de, 256
+    add hl, de
+    ld (pong_paddle1_position_y), hl
+    jr _input_done
+
+_input_done:
+    call pong_update_ball
 
     ret
 
@@ -287,13 +330,21 @@ pong_initialize:
     ld a, 1
     ld (pong_ball_sprite_reset), a
 
-    ld de, 50*256
-    ld (pong_ball_position_x), de
-    ld (pong_ball_position_y), de
-    ld de, 768
-    ld (pong_ball_velocity_x), de
-    ld de, 256
-    ld (pong_ball_velocity_y), de
+    ld a, 80
+    ld (pong_ball_x), a
+    ld (pong_ball_y), a
+
+    ;
+    ld a, 1
+    ld (pong_ball_x_delta), a
+    ld (pong_ball_y_delta), a
+    ld a, 1
+    ld (pong_ball_x_timer), a
+    ld (pong_ball_y_timer), a
+    ld a, 8
+    ld (pong_ball_x_delay), a
+    ld a, 4
+    ld (pong_ball_y_delay), a
 
     ret
 

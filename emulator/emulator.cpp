@@ -112,12 +112,12 @@ void save_state(Machine* m, char const* path)
 
 #undef WRITE_REGISTER
 
-fwrite(&m->frame_cycle, sizeof(u64), 1, file);
+	fwrite(&m->frame_cycle, sizeof(u64), 1, file);
 
-fwrite(m->ram, sizeof(u8), 8192, file);
-fwrite(m->vram, sizeof(u8), 8192, file);
+	fwrite(m->ram, sizeof(u8), 8192, file);
+	fwrite(m->vram, sizeof(u8), 8192, file);
 
-fclose(file);
+	fclose(file);
 }
 
 void load_state(Machine* m, char const* path)

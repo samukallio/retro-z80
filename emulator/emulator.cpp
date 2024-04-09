@@ -202,6 +202,9 @@ int main()
 	u64 initial_ticks = SDL_GetTicks64();
 	u64 current_frame = 0;
 
+	bool stepping = false;
+	bool running = true;
+
 	bool exit = false;
 	while (!exit) {
 		SDL_Event event;
@@ -216,6 +219,15 @@ int main()
 					save_state(m, "state.dat");
 				if (event.key.keysym.scancode == SDL_SCANCODE_F2)
 					load_state(m, "state.dat");
+
+				if (event.key.keysym.scancode == SDL_SCANCODE_F9) {
+					stepping = true;
+					running = true;
+				}
+				if (event.key.keysym.scancode == SDL_SCANCODE_F10) {
+					stepping = false;
+					running = true;
+				}
 			}
 		}
 
@@ -231,20 +243,24 @@ int main()
 		i64 const VIDEO_CYCLES = 256 * 512;
 		i64 const FRAME_CYCLES = 312 * 512;
 
-		// Run for one frame.
-		bool nmi_accepted = false;
-		while (m->frame_cycle < FRAME_CYCLES) {
-			// Execute one opcode.
-			m->frame_cycle += z80ex_step(m->cpu);
+		if (running) {
+			// Run for one frame.
+			bool nmi_accepted = false;
+			while (m->frame_cycle < FRAME_CYCLES) {
+				// Execute one opcode.
+				m->frame_cycle += z80ex_step(m->cpu);
 
-			// Entering vertical blank, assert NMI.
-			if (m->frame_cycle >= VIDEO_CYCLES && !nmi_accepted) {
-				i64 nmi_cycles = z80ex_nmi(m->cpu);
-				m->frame_cycle += nmi_cycles;
-				nmi_accepted = nmi_cycles > 0;
+				// Entering vertical blank, assert NMI.
+				if (m->frame_cycle >= VIDEO_CYCLES && !nmi_accepted) {
+					i64 nmi_cycles = z80ex_nmi(m->cpu);
+					m->frame_cycle += nmi_cycles;
+					nmi_accepted = nmi_cycles > 0;
+				}
 			}
+			m->frame_cycle -= FRAME_CYCLES;
 		}
-		m->frame_cycle -= FRAME_CYCLES;
+
+		if (stepping) running = false;
 
 		// Copy VRAM contents onto the window surface.
 		SDL_LockSurface(surface);

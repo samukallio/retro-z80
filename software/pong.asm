@@ -51,7 +51,7 @@ endif
 org PONG_ROM_BASE
 
 pong_ball_sprite:
-    db $18, $3C, $7E, $FF, $FF, $7E, $3C, $18
+    db $3C, $7E, $FF, $FF, $FF, $FF, $7E, $3C
     db $00
 
 pong_paddle_sprite:

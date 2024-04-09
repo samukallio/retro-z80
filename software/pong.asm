@@ -7,6 +7,7 @@ PONG_MIN_Y:                     equ 61
 PONG_MAX_Y:                     equ 256-61
 PONG_PADDLE1_X:                 equ 24
 PONG_PADDLE2_X:                 equ 256-24
+PONG_FRAME_TICKS:               equ 16
 
 ; --- RAM ---------------------------------------------------------------------
 
@@ -193,12 +194,13 @@ _draw_paddle2:
     ret
 
 pong_update_ball:
-    ; B = total number of ticks
-    ; C = number of ticks to advance now
-
-    ld b, 32
+    ; Loop that processes a set amount of movement ticks per frame.
+    ld b, PONG_FRAME_TICKS
 _loop:
-    ; Compute C = min(B, pong_ball_x_timer, pong_ball_y_timer).
+    ; Determine how many ticks to advance the timers by.  The next movement
+    ; happens after T = min(pong_ball_x_timer, pong_ball_y_timer) ticks, but
+    ; we should only process up to 16 ticks per frame.  Therefore, advance
+    ; the timers by C = min(T, 16) ticks.
     ld a, (pong_ball_x_timer)
     ld c, a
     ld a, (pong_ball_y_timer)
@@ -212,7 +214,10 @@ _min1:
 _min2:
     ld c, a
 
-    ; Store movement flags (bit 0 = X move, bit 1 = Y move)
+    ; Decrement the X/Y timers and move the ball accordingly if either or
+    ; both of the timers reach zero.  Also, set bit 0 of E if the ball moved
+    ; in the X direction, and set bit 1 of E if the ball moved in the Y
+    ; direction.  We need this information to avoid double collisions.
     ld e, 0
 _move_x:
     ; Update timer.
@@ -248,6 +253,8 @@ _move_y:
     set 1, e
 _move_done:
 
+    ; Do collision checking in the X direction, but only if the ball moved
+    ; in the X direction.
 _test_x:
     bit 0, e
     jr z, _test_y
@@ -282,6 +289,8 @@ _bounce_x:
     ld (pong_ball_x_delta), a
 _test_x_done:
 
+    ; Do collision checking in the Y direction, but only if the ball moved
+    ; in the Y direction.
 _test_y:
     bit 1, e
     jr z, _next
@@ -298,6 +307,8 @@ _bounce_y:
     neg
     ld (pong_ball_y_delta), a
 
+    ; Keep decrementing the timers as long as there are ticks left to process
+    ; for this frame.
 _next:
     ld a, b
     sub c

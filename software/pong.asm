@@ -10,16 +10,15 @@ PONG_MAX_Y:                     equ 256-61
 
 org PONG_RAM_BASE
 
-; Ball position.
-pong_ball_x:                    ds 1
-pong_ball_x_delta:              ds 1
-pong_ball_x_delay:              ds 1
-pong_ball_x_timer:              ds 1
-
-pong_ball_y:                    ds 1
-pong_ball_y_delta:              ds 1
-pong_ball_y_delay:              ds 1
-pong_ball_y_timer:              ds 1
+; Ball state.
+pong_ball_x:                    ds 1    ; X position.
+pong_ball_x_delta:              ds 1    ; X delta (when timer reaches zero).
+pong_ball_x_delay:              ds 1    ; X movement timer preset value.
+pong_ball_x_timer:              ds 1    ; X movement timer.
+pong_ball_y:                    ds 1    ; Y position.
+pong_ball_y_delta:              ds 1    ; Y delta (when timer reaches zero).
+pong_ball_y_delay:              ds 1    ; Y movement timer preset value.
+pong_ball_y_timer:              ds 1    ; Y movement timer.
 
 ; Paddle positions.
 pong_paddle1_position_y:        ds 2
@@ -199,61 +198,64 @@ pong_update_ball:
 
     ld b, 32
 _loop:
-    ; Compute the number of ticks to simulate.
+    ; Compute C = min(B, pong_ball_x_timer, pong_ball_y_timer).
     ld a, (pong_ball_x_timer)
     ld c, a
     ld a, (pong_ball_y_timer)
     cp c
-    jr c, _l1
+    jr c, _min1
     ld a, c
-_l1:
+_min1:
     cp b
-    jr c, _l2
+    jr c, _min2
     ld a, b
-_l2:
+_min2:
     ld c, a
 
-_do_x:
+_update_x:
+    ; Update timer.
     ld a, (pong_ball_x_timer)
     sub c
     ld (pong_ball_x_timer), a
-    jr nz, _do_y
-    ; do x
-
+    jr nz, _update_y
+    ; Timer reached zero, reset timer.
     ld a, (pong_ball_x_delay)
     ld (pong_ball_x_timer), a
-
+    ; Move ball.
     ld a, (pong_ball_x_delta)
     ld d, a
     ld a, (pong_ball_x)
     add a, d
     ld (pong_ball_x), a
+    ; Check for collision with the field edges.
     cp PONG_MIN_X
     jr z, _collide_x
     cp PONG_MAX_X - 8
     jr z, _collide_x
-    jr _do_y
+    jr _update_y
 
 _collide_x:
+    ; Flip direction.
     ld a, d
     neg
     ld (pong_ball_x_delta), a
 
-_do_y:
+_update_y:
+    ; Update timer.
     ld a, (pong_ball_y_timer)
     sub c
     ld (pong_ball_y_timer), a
     jr nz, _next
-    ; do y
-
+    ; Timer reached zero, reset timer.
     ld a, (pong_ball_y_delay)
     ld (pong_ball_y_timer), a
-
+    ; Move ball.
     ld a, (pong_ball_y_delta)
     ld d, a
     ld a, (pong_ball_y)
     add a, d
     ld (pong_ball_y), a
+    ; Check for collision with the field edges.
     cp PONG_MIN_Y
     jr z, _collide_y
     cp PONG_MAX_Y - 8
@@ -261,6 +263,7 @@ _do_y:
     jr _next
 
 _collide_y:
+    ; Flip direction.
     ld a, d
     neg
     ld (pong_ball_y_delta), a

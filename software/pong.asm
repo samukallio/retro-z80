@@ -157,9 +157,6 @@ _draw:
 pong_render:
     call wait_for_vblank
 
-    ld a, $FF
-    ld ($6000), a
-
     ; Draw the ball.
     ld hl, pong_ball_sprite_reset
     srl (hl)
@@ -219,9 +216,6 @@ _draw_paddle2:
     ld l, a
     ld de, pong_paddle_sprite
     call pong_draw_sprite_aligned
-
-    ld a, $00
-    ld ($6000), a
 
     ld a, (VRAM_BASE)
 

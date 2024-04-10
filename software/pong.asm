@@ -123,10 +123,42 @@ _exit:
     ret
 
 ;
+;   Draw a sprite on the screen, ignoring fine X position.
+;
+;   Inputs:
+;       H   Y position of the sprite.
+;       L   X position of the sprite (bottom 3 bits discarded).
+;       DE  Pointer to sprite data.
+;
+pong_draw_sprite_aligned:
+    srl h
+    rr l
+    srl h
+    rr l
+    srl h
+    rr l
+    ld bc, VRAM_BASE
+    add hl, bc
+
+    ld bc, 32
+_draw:
+    ld a, (de)
+    or a
+    ret z
+    inc de
+    xor (hl)
+    ld (hl), a
+    add hl, bc
+    jr _draw
+
+;
 ;   Update video memory.
 ;
 pong_render:
     call wait_for_vblank
+
+    ld a, $FF
+    ld ($6000), a
 
     ; Draw the ball.
     ld hl, pong_ball_sprite_reset
@@ -156,8 +188,8 @@ _draw_ball:
     ld h, a
     ld a, (pong_paddle1_sprite_x)
     ld l, a
-    ld ix, pong_paddle_sprite
-    call pong_draw_sprite
+    ld de, pong_paddle_sprite
+    call pong_draw_sprite_aligned
 _draw_paddle1:
     ld a, (pong_paddle1_position_y+1)
     ld (pong_paddle1_sprite_y), a
@@ -165,8 +197,8 @@ _draw_paddle1:
     ld a, 16
     ld (pong_paddle1_sprite_x), a
     ld l, a
-    ld ix, pong_paddle_sprite
-    call pong_draw_sprite
+    ld de, pong_paddle_sprite
+    call pong_draw_sprite_aligned
 
     ; Draw the right paddle.
     ld hl, pong_paddle2_sprite_reset
@@ -176,8 +208,8 @@ _draw_paddle1:
     ld h, a
     ld a, (pong_paddle2_sprite_x)
     ld l, a
-    ld ix, pong_paddle_sprite
-    call pong_draw_sprite
+    ld de, pong_paddle_sprite
+    call pong_draw_sprite_aligned
 _draw_paddle2:
     ld a, (pong_paddle2_position_y+1)
     ld (pong_paddle2_sprite_y), a
@@ -185,9 +217,11 @@ _draw_paddle2:
     ld a, 256-24
     ld (pong_paddle2_sprite_x), a
     ld l, a
-    ld ix, pong_paddle_sprite
-    call pong_draw_sprite
+    ld de, pong_paddle_sprite
+    call pong_draw_sprite_aligned
 
+    ld a, $00
+    ld ($6000), a
 
     ld a, (VRAM_BASE)
 
